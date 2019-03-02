@@ -1,0 +1,97 @@
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <iostream>
+
+#include "NetworkManager.h"
+
+#include "Decoder.h"
+#include "Encoder.h"
+#include "Resource.h"
+#include "Buffer.h"
+
+#define DEFAULT_BUFLEN 512
+#define DEFAULT_PORT "27015"
+
+int __cdecl main(void) 
+{
+    WSADATA wsaData;
+	int iResult;
+	
+    // Initialize Winsock
+    iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+    if (iResult != 0) {
+        printf("WSAStartup failed with error: %d\n", iResult);
+        return 1;
+    }
+	
+	
+	//***************** EXAMPLE RECIEVE ************************//
+	
+	//Buffer buff_test;
+	
+	//char* testData = "Hello World!";
+	
+	//buff_test.write(testData, (int)strlen(testData));
+	
+	//buff_test.print();
+	
+	Buffer test_job;
+	
+	NetworkManager netManager;
+	
+	netManager.createServer("nodeA", DEFAULT_PORT);
+	netManager.acceptConnection("nodeB", "nodeA");
+
+	std::vector<Resource> resources;
+	
+	netManager.read("nodeB", test_job);
+	
+	Decoder decoder;
+	
+	decoder.run(test_job, resources);
+	
+	for(int i = 0; i < resources.size(); i++) {
+		
+		if(resources[i].type == RESOURCE_TYPE_DATA) {
+			
+			std::cout << "RESOURCE DATA: " << std::endl;
+
+			std::cout << "RESOURCE DATA SIZE: " << resources[i].buff.getSize() << std::endl;
+		}
+		
+		
+		if(resources[i].type == RESOURCE_TYPE_CODE) {
+
+			std::cout << "RESOURCE FILE NAME: " << resources[i].codeFn << std::endl;
+			
+			typedef void (*FUNC)(const char *);
+
+			HMODULE dllHandle = LoadLibraryA("0.dll");
+
+			FUNC func;
+
+			func = (FUNC) GetProcAddress(
+			   dllHandle, 
+			   "hello");
+
+			func("testabc");
+
+		}
+
+	}
+	
+	int in = 0;
+	
+	std::cin >> in;
+	
+	//*******************************************************//
+
+    // cleanup
+    //closesocket(ClientSocket);
+    WSACleanup();
+
+	
+    return 0;
+}
+

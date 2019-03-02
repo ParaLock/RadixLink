@@ -1,0 +1,10 @@
+
+
+class JobManager {
+private:
+	
+public:
+
+	
+	
+};
