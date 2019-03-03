@@ -2,6 +2,10 @@
 #include "Encoder.h"
 #include "Dispatcher.h"
 
+#include "NetworkManager.h"
+#include "JobManager.h"
+#include "NodeManager.h"
+
 #include <iostream>
 
 int main() {
@@ -22,9 +26,7 @@ int main() {
             binFile.write(payload, header->payloadSize);
         }
 
-        resource.destManager = "job_manager";
-    
-			
+        resource.destManager = typeid(JobManager).name();
     });
 
     decoder.registerHandler(1, [](EncoderHeader* header, char* payload, Resource& resource) {
@@ -33,8 +35,7 @@ int main() {
         
         resource.info = *(JobInfo*)payload;
 
-        resource.destManager = "job_manager";
-			
+        resource.destManager = typeid(JobManager).name();	
     });
 
     decoder.registerHandler(2, [](EncoderHeader* header, char* payload, Resource& resource) {
@@ -43,13 +44,13 @@ int main() {
     
         resource.buff.write(payload, header->payloadSize);
 
-        resource.destManager = "job_manager";
+        resource.destManager = typeid(JobManager).name();
     });
 
     Dispatcher dispatcher;
 
-    NetworkManager netMan;
-    JobManager     jobMan;
+    NetworkManager netMan(dispatcher);
+    JobManager     jobMan(dispatcher);
 
 
 }

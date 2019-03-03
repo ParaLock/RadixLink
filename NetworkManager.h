@@ -26,20 +26,25 @@
 
 const unsigned int MAX_BLOCK_SIZE = 500; 
 
-class NetworkManager : public Manager {
+class NetworkManager : public Manager<NetworkManager> {
 private:
-	std::map<std::string, SOCKET> connections;
-	std::map<std::string, SOCKET> clients;
-	std::map<std::string, SOCKET> listeners;
+	std::map<std::string, SOCKET> m_connections;
+	std::map<std::string, SOCKET> m_clients;
+	std::map<std::string, SOCKET> m_listeners;
 	
-	std::vector<std::string>      activeClients;
+	std::vector<std::string>      m_activeClients;
 	
-	IDispatcher& dispatcher;
+	Decoder&     m_decoder;
+	Encoder&     m_encoder;
 	
 public:
 	
-	NetworkManager(IDispatcher& dispatcher) : dispatcher(dispatcher) {
-		
+	NetworkManager(IDispatcher& dispatcher, Decoder& decoder, Encoder& encoder) 
+		: Manager(dispatcher),
+		  m_decoder(decoder),
+		  m_encoder(encoder)
+		  
+	{
 		
 	}
 	
@@ -52,5 +57,6 @@ public:
 	bool createServer(std::string nodeName, const char* port);
 	bool acceptConnection(std::string nodeName, std::string serverName);
 	
+	void execute();
 	
 };

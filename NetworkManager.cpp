@@ -248,10 +248,12 @@ void NetworkManager::processIncoming() {
 	sleep(500);
 }
 
-void NetworkManager::start() {
-	
-}
+void NetworkManager::execute() {
 
-void NetworkManager::stop() {
-	
+    std::vector<Resource> res = getResources(5);
+
+    for(int i = 0; i < 5; i++) {
+
+        
+    }
 }

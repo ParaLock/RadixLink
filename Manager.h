@@ -1,24 +1,48 @@
-
+#include "IManager.h"
 #include <thread>
 
+template<typename T>
 class Manager {
 private:
-    std::thread executionThread;
+    std::thread m_executionThread;
+    IDispatcher&  m_dispatcher;
+
+    std::vector<Resource> m_resourceQueue;
 public:
+
+    Manager(IDispatcher& dispatcher) : m_dispatcher(dispatcher) {
+
+        dispatcher.registerManager(typeid(T).name(), *this);
+    }
+
     void addResources(std::vector<Resource>& resources) {
 
+        m_resourceQueue.insert(m_resourceQueue.end(), resources.begin(), resources.end());
 
+    }
+
+    std::vector<Resource> getResources(int num) {
+
+        std::vector<Resource> temp;
+
+        for(int i = 0; i < num && m_resourceQueue.size() > 0; i++) {
+
+            temp.push_back(m_resourceQueue.back());
+            m_resourceQueue.pop_back();
+        }
+
+        return temp;
     }
 
     virtual void execute() = 0;
 
     void start() {
 
-        executionThread = std::thread(execute);
+        m_executionThread = std::thread(execute);
     }
 
     void stop() {
 
-        executionThread.join();
+        m_executionThread.join();
     }
 };
