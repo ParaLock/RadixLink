@@ -4,7 +4,6 @@
 
 #include "NetworkManager.h"
 #include "JobManager.h"
-#include "NodeManager.h"
 
 #include <iostream>
 
@@ -35,7 +34,7 @@ int main() {
         std::cout << "Decoder: Job section detected!" << std::endl;
         
         resource.info = *(JobInfo*)payload;
-        
+
         resource.destManager = typeid(JobManager).name();	
     });
 

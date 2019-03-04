@@ -1,24 +1,42 @@
+#pragma once
+
 #include "IManager.h"
+#include "Dispatcher.h"
 #include <thread>
+#include <vector>
+#include <functional>
 
 template<typename T>
-class Manager {
+class Manager : public IManager{
 private:
     std::thread m_executionThread;
     IDispatcher&  m_dispatcher;
 
     std::vector<Resource> m_resourceQueue;
+
+    std::string           m_name;
 public:
 
     Manager(IDispatcher& dispatcher) : m_dispatcher(dispatcher) {
 
-        m_dispatcher.registerManager(typeid(T).name(), *this);
+        m_name = typeid(T).name();
+
+        m_dispatcher.registerManager(m_name, this);
     }
 
     void addResources(std::vector<Resource>& resources) {
 
         m_resourceQueue.insert(m_resourceQueue.end(), resources.begin(), resources.end());
 
+    }
+
+    void addResource(Resource& resource) {
+
+        m_resourceQueue.push_back(resource);
+    }
+
+    std::string getName() {
+        return m_name;
     }
 
     std::vector<Resource> getResources(int num) {
@@ -43,7 +61,7 @@ public:
 
     void start() {
 
-        m_executionThread = std::thread(execute);
+        m_executionThread = std::thread(&Manager<T>::execute, this);
     }
 
     void stop() {

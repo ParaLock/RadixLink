@@ -1,2 +1,2 @@
-sudo x86_64-w64-mingw32-g++ client.cpp *.cpp -lws2_32 -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -o client.exe
-sudo x86_64-w64-mingw32-g++ server.cpp *.cpp -lws2_32 -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -o server.exe
+sudo x86_64-w64-mingw32-g++ nodeMain.cpp *.cpp -lws2_32 -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -o client.exe
+#sudo x86_64-w64-mingw32-g++ server.cpp *.cpp -lws2_32 -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -o server.exe

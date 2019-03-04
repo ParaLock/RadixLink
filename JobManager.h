@@ -1,7 +1,7 @@
 #include "Manager.h"
 #include "Job.h"
 
-class JobManager : Manager<JobManager> {
+class JobManager : public Manager<JobManager> {
 private:
 	std::map<int, Job> m_currentJobs;
 public:

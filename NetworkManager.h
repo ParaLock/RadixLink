@@ -23,6 +23,9 @@
 
 #include "Manager.h"
 #include "Buffer.h"
+#include "Decoder.h"
+#include "Encoder.h"
+#include "IDispatcher.h"
 
 const unsigned int MAX_BLOCK_SIZE = 500; 
 

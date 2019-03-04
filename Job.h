@@ -67,6 +67,8 @@ struct Job {
 		}
 		
 		removePreReq(resource.type);
+
+		return true;
 	}
 	
 	void execute() {

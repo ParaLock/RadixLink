@@ -4,7 +4,7 @@
 #include "Buffer.h"
 
 #include <fstream>
-
+#include <iostream>
 
 const int RESOURCE_TYPE_CODE = 0;
 const int RESOURCE_TYPE_DATA = 1;

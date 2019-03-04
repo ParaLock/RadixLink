@@ -51,7 +51,7 @@ bool NetworkManager::connectToNode(std::string nodeName, const char* target, con
 	
 	
 	
-	connections.insert({nodeName, ConnectSocket});
+	m_connections.insert({nodeName, ConnectSocket});
 	
 	return true;
 }
@@ -59,7 +59,7 @@ bool NetworkManager::connectToNode(std::string nodeName, const char* target, con
 
 bool NetworkManager::disconnect(std::string nodeName) {
 	
-	SOCKET ConnectSocket = connections.at(nodeName);
+	SOCKET ConnectSocket = m_connections.at(nodeName);
 	
 	int iResult;
 	// shutdown the connection since no more data will be sent
@@ -76,7 +76,7 @@ bool NetworkManager::disconnect(std::string nodeName) {
 	
 bool NetworkManager::write(std::string nodeName, Buffer& buff) {
 		
-	SOCKET ConnectSocket = connections.at(nodeName);
+	SOCKET ConnectSocket = m_connections.at(nodeName);
 	
     // Send an initial buffer
 	int iResult;
@@ -102,7 +102,7 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 	
 	int iResult;
 	
-	SOCKET clientSocket = clients.at(nodeName);
+	SOCKET clientSocket = m_clients.at(nodeName);
 	
 	size_t bytesReceived = 0;
 	size_t size = 0;
@@ -185,7 +185,7 @@ bool NetworkManager::createServer(std::string nodeName, const char* port) {
 
     freeaddrinfo(result);
 	
-	listeners.insert({nodeName, ListenSocket});
+	m_listeners.insert({nodeName, ListenSocket});
 	
     m_thisNode = nodeName;
 
@@ -197,7 +197,7 @@ bool NetworkManager::acceptConnection(std::string clientName, std::string server
 	
 	
     SOCKET ClientSocket = INVALID_SOCKET;
-	SOCKET ListenSocket = listeners.at(serverName);
+	SOCKET ListenSocket = m_listeners.at(serverName);
 	
     int iResult;
 	
@@ -223,21 +223,21 @@ bool NetworkManager::acceptConnection(std::string clientName, std::string server
     // No longer need server socket
     closesocket(ListenSocket);
 	
-	activeClients.push_back(clientName);
+	m_activeClients.push_back(clientName);
 	
-	clients.insert({clientName, ClientSocket});
+	m_clients.insert({clientName, ClientSocket});
 	
 	return true;
 }
 
 void NetworkManager::execute() {
 
-	for(int i = 0; i < activeClients.size(); i++) {
+	for(int i = 0; i < m_activeClients.size(); i++) {
 	
 		Buffer buff;
 		std::vector<Resource> resources;
 		
-		read(activeClients[i], buff);
+		read(m_activeClients[i], buff);
 		
 		m_decoder.run(buff, resources);
 		
@@ -250,11 +250,14 @@ void NetworkManager::execute() {
 
         Buffer buff;
         
-        std::string name = std::string(res[i].sendername);
+        std::string name = std::string(res[i].senderName);
 
         strcpy(res[i].senderName, m_thisNode.c_str());
 
-        m_encoder.run(buff, {res[i]});
+        std::vector<Resource> temp;
+        temp.push_back(res[i]);
+
+        m_encoder.run(buff, temp);
 
         write(name, buff);
 

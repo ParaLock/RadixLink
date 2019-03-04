@@ -1,7 +1,8 @@
 #pragma once
 
 #include "JobInfo.h"
-	
+#include "Buffer.h"
+
 struct Resource {
 	
 	std::string   		destManager;
@@ -36,8 +37,6 @@ struct Resource {
 		
 		response = other.response;
 
-		nodeID = other.nodeID;
-
 		destManager = other.destManager;
 	}
 	
@@ -50,8 +49,7 @@ struct Resource {
 		buff = other.buff;
 		
 		response = other.response;
-		nodeID = other.nodeID;
-		
+
 		destManager = other.destManager;
 	}
 };
