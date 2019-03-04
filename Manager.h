@@ -12,7 +12,7 @@ public:
 
     Manager(IDispatcher& dispatcher) : m_dispatcher(dispatcher) {
 
-        dispatcher.registerManager(typeid(T).name(), *this);
+        m_dispatcher.registerManager(typeid(T).name(), *this);
     }
 
     void addResources(std::vector<Resource>& resources) {
@@ -32,6 +32,11 @@ public:
         }
 
         return temp;
+    }
+
+    void putResources(std::vector<Resource>& resources) {
+
+        m_dispatcher.dispatch(resources);
     }
 
     virtual void execute() = 0;

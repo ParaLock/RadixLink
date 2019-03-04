@@ -28,12 +28,15 @@ const unsigned int MAX_BLOCK_SIZE = 500;
 
 class NetworkManager : public Manager<NetworkManager> {
 private:
+
 	std::map<std::string, SOCKET> m_connections;
 	std::map<std::string, SOCKET> m_clients;
 	std::map<std::string, SOCKET> m_listeners;
 	
 	std::vector<std::string>      m_activeClients;
 	
+	std::string m_thisNode;
+
 	Decoder&     m_decoder;
 	Encoder&     m_encoder;
 	

@@ -10,9 +10,10 @@
 
 int main() {
 
+    Encoder encoder;
     Decoder decoder;
 
-    decoder.registerHandler(0, [](EncoderHeader* header, char* payload, Resource& resource) {
+    decoder.registerHandler(RESOURCE_TYPE_CODE, [](EncoderHeader* header, char* payload, Resource& resource) {
 
         std::cout << "Decoder: Code section detected!" << std::endl;
         
@@ -29,16 +30,16 @@ int main() {
         resource.destManager = typeid(JobManager).name();
     });
 
-    decoder.registerHandler(1, [](EncoderHeader* header, char* payload, Resource& resource) {
+    decoder.registerHandler(RESOURCE_TYPE_JOB, [](EncoderHeader* header, char* payload, Resource& resource) {
 
         std::cout << "Decoder: Job section detected!" << std::endl;
         
         resource.info = *(JobInfo*)payload;
-
+        
         resource.destManager = typeid(JobManager).name();	
     });
 
-    decoder.registerHandler(2, [](EncoderHeader* header, char* payload, Resource& resource) {
+    decoder.registerHandler(RESOURCE_TYPE_DATA, [](EncoderHeader* header, char* payload, Resource& resource) {
 
         std::cout << "Decoder: Data section detected!" << "payload size: " << header->payloadSize << std::endl;
     
@@ -49,8 +50,9 @@ int main() {
 
     Dispatcher dispatcher;
 
-    NetworkManager netMan(dispatcher);
+    NetworkManager netMan(dispatcher, decoder, encoder);
     JobManager     jobMan(dispatcher);
 
-
+    netMan.start();
+    jobMan.start();
 }

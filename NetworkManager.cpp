@@ -187,6 +187,8 @@ bool NetworkManager::createServer(std::string nodeName, const char* port) {
 	
 	listeners.insert({nodeName, ListenSocket});
 	
+    m_thisNode = nodeName;
+
 	return true;
 
 }
@@ -228,10 +230,8 @@ bool NetworkManager::acceptConnection(std::string clientName, std::string server
 	return true;
 }
 
-void NetworkManager::processIncoming() {
+void NetworkManager::execute() {
 
-	Decoder decoder;
-	
 	for(int i = 0; i < activeClients.size(); i++) {
 	
 		Buffer buff;
@@ -239,21 +239,24 @@ void NetworkManager::processIncoming() {
 		
 		read(activeClients[i], buff);
 		
-		decoder.run(buff, resources);
+		m_decoder.run(buff, resources);
 		
-		if(resources.size() > 0)
-			dispatcher.dispatch(resources);
+		putResources(resources);
 	}
-	
-	sleep(500);
-}
-
-void NetworkManager::execute() {
 
     std::vector<Resource> res = getResources(5);
 
-    for(int i = 0; i < 5; i++) {
+    for(int i = 0; i < res.size(); i++) {
 
+        Buffer buff;
         
+        std::string name = std::string(res[i].sendername);
+
+        strcpy(res[i].senderName, m_thisNode.c_str());
+
+        m_encoder.run(buff, {res[i]});
+
+        write(name, buff);
+
     }
 }

@@ -1,6 +1,9 @@
 #pragma once
 
-#include "JobResource.h"
+#include "windows.h"
+
+#include "Resource.h"
+#include "JobInfo.h"
 #include "Encoder.h"
 
 struct Job {
@@ -39,9 +42,14 @@ struct Job {
 			_isComplete = true;
 		}
 	}
+
+	void addPreReq(int type) {
+
+		_preReqs.push_back(type);
+	}
 	
 	//Returns true if job setup is finalized
-	bool addResource(JobResource& resource) {
+	bool addResource(Resource& resource) {
 
 		if(resource.type == RESOURCE_TYPE_JOB) {
 
@@ -82,6 +90,16 @@ struct Job {
 	bool isComplete() {
 		
 		return _isComplete;
+	}
+
+	bool isRunnable() {
+
+		if(_preReqs.size() == 0) {
+
+			return true;	
+		} 
+
+		return false;
 	}
 	
 	Buffer& getResult() {

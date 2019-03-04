@@ -6,6 +6,8 @@ struct Resource {
 	
 	std::string   		destManager;
 	
+	char               	senderName[50];
+
 	unsigned int  		jobID;
 	int           		type;
 
@@ -34,6 +36,8 @@ struct Resource {
 		
 		response = other.response;
 
+		nodeID = other.nodeID;
+
 		destManager = other.destManager;
 	}
 	
@@ -46,6 +50,8 @@ struct Resource {
 		buff = other.buff;
 		
 		response = other.response;
+		nodeID = other.nodeID;
+		
 		destManager = other.destManager;
 	}
 };
