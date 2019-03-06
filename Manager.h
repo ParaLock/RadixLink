@@ -61,7 +61,7 @@ public:
 
     void start() {
 
-        m_executionThread = std::thread(&Manager<T>::execute, this);
+        m_executionThread = std::thread(std::bind(&Manager<T>::execute, this));
     }
 
     void stop() {

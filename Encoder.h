@@ -2,9 +2,12 @@
 
 #include <string>
 #include "Buffer.h"
+#include "Resource.h"
 
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <functional>
 
 const int RESOURCE_TYPE_CODE = 0;
 const int RESOURCE_TYPE_DATA = 1;
@@ -21,6 +24,24 @@ struct EncoderHeader {
 };
 
 struct Encoder {
+
+	std::map<int, std::function<void(Buffer&, Resource&)>> m_encoders;
+
+	void registerHandler(int type, std::function<void(Buffer&, Resource&)> handler) {
+
+		m_encoders.insert({type, handler});
+	}
+
+	bool run(Buffer& buff, std::vector<Resource>& resources) {
+
+
+		for(int i = 0; i < resources.size(); i++) {
+
+			m_encoders.at(resources[i].type)(buff, resources[i]);
+		}
+
+		return true;
+	}
 
 	bool run(char* src, size_t size, unsigned int jobID, int type, Buffer& buff) {
 	

@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-int main() {
+int main(int argc, char **argv) {
 
     Encoder encoder;
     Decoder decoder;
@@ -47,11 +47,55 @@ int main() {
         resource.destManager = typeid(JobManager).name();
     });
 
+    encoder.registerHandler(RESOURCE_TYPE_CODE, [](Buffer& buff, Resource& resource) {
+
+        EncoderHeader header;
+        header.type        = resource.type;
+        header.payloadSize = resource.buff.getSize();
+        header.jobID       = resource.jobID;
+
+        buff.write((char*)&header, sizeof(EncoderHeader));
+        buff.write(resource.buff.getBase(), header.payloadSize);
+
+        resource.destManager = typeid(JobManager).name();
+    });
+
+    encoder.registerHandler(RESOURCE_TYPE_JOB, [](Buffer& buff, Resource& resource) {
+
+        EncoderHeader header;
+        header.type        = resource.type;
+        header.payloadSize = resource.buff.getSize();
+        header.jobID       = resource.jobID;
+
+        buff.write((char*)&header, sizeof(EncoderHeader));
+        buff.write((char*)&resource.info, sizeof(decltype(resource.info)));
+
+        resource.destManager = typeid(JobManager).name();	
+    });
+
+    encoder.registerHandler(RESOURCE_TYPE_DATA, [](Buffer& buff, Resource& resource) {
+
+        EncoderHeader header;
+        header.type        = resource.type;
+        header.payloadSize = resource.buff.getSize();
+        header.jobID       = resource.jobID;
+
+        buff.write((char*)&header, sizeof(EncoderHeader));
+        buff.write((char*)&resource.info, sizeof(decltype(resource.info)));
+
+
+        resource.destManager = typeid(JobManager).name();
+    });
+
     Dispatcher dispatcher;
 
     NetworkManager netMan(dispatcher, decoder, encoder);
     JobManager     jobMan(dispatcher);
 
     netMan.start();
-    jobMan.start();
+
+
+    std::cout << "Test123" << std::endl;
+
+   // jobMan.start();
 }
