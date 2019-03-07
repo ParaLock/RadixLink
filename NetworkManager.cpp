@@ -244,7 +244,10 @@ void NetworkManager::execute() {
 		putResources(resources);
 	}
 
-    std::vector<Resource> res = getResources(5);
+    std::vector<Resource> res;
+
+    getResources(5, res);
+        
 
     for(int i = 0; i < res.size(); i++) {
 

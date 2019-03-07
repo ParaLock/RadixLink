@@ -28,6 +28,7 @@ public:
 
         m_resourceQueue.insert(m_resourceQueue.end(), resources.begin(), resources.end());
 
+
     }
 
     void addResource(Resource& resource) {
@@ -39,17 +40,13 @@ public:
         return m_name;
     }
 
-    std::vector<Resource> getResources(int num) {
-
-        std::vector<Resource> temp;
+    void getResources(int num, std::vector<Resource>& resources) {
 
         for(int i = 0; i < num && m_resourceQueue.size() > 0; i++) {
 
-            temp.push_back(m_resourceQueue.back());
+            resources.push_back(m_resourceQueue.back());
             m_resourceQueue.pop_back();
         }
-
-        return temp;
     }
 
     void putResources(std::vector<Resource>& resources) {
@@ -57,11 +54,9 @@ public:
         m_dispatcher.dispatch(resources);
     }
 
-    virtual void execute() = 0;
-
     void start() {
 
-        m_executionThread = std::thread(std::bind(&Manager<T>::execute, this));
+        m_executionThread = std::thread([this]() { this->execute();});
     }
 
     void stop() {
