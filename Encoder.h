@@ -12,7 +12,7 @@
 const int RESOURCE_TYPE_CODE = 0;
 const int RESOURCE_TYPE_DATA = 1;
 const int RESOURCE_TYPE_JOB  = 2;
-
+const int RESOURCE_TYPE_RESULT = 3;
 
 struct EncoderHeader {
 	
@@ -43,7 +43,7 @@ struct Encoder {
 		return true;
 	}
 
-	bool run(char* src, size_t size, unsigned int jobID, int type, Buffer& buff) {
+	static bool run(char* src, size_t size, unsigned int jobID, int type, Buffer& buff) {
 	
 		EncoderHeader header;
 		header.type = type;
@@ -56,11 +56,7 @@ struct Encoder {
 		return true;
 	}
 	
-	bool run(std::string fn, unsigned int jobID, int type, Buffer& buff) {
-	
-		EncoderHeader header;
-		header.type = type;
-		header.jobID = jobID;
+	static bool run(std::string fn, Buffer& buff) {
 	
 		std::ifstream ifs(fn, std::ios::binary|std::ios::ate);
 		
@@ -69,16 +65,11 @@ struct Encoder {
 
 			std::ifstream::pos_type pos = ifs.tellg();
 
-			header.payloadSize = pos;
-
-			buff.write((char*)&header, sizeof(EncoderHeader));
-
 			for(int i = 0; i < pos; i++) {
 
 				char junk = 'f';
 				buff.write(&junk, sizeof(char));
 			}
-
 
 			ifs.seekg(0, std::ios::beg);
 			ifs.read(buff.getCurrentOffset() - pos, pos);

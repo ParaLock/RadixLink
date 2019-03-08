@@ -253,9 +253,9 @@ void NetworkManager::execute() {
 
         Buffer buff;
         
-        std::string name = std::string(res[i].senderName);
+        std::string name = std::string(res[i].target);
 
-        strcpy(res[i].senderName, m_thisNode.c_str());
+        strcpy(res[i].target, m_thisNode.c_str());
 
         std::vector<Resource> temp;
         temp.push_back(res[i]);

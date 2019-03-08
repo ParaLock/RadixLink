@@ -11,13 +11,10 @@ struct Job {
 	typedef void (*FUNC)(char *, size_t, Buffer& out);
 	
 	std::vector<int> _preReqs;
+	std::map<int, Resource> m_resources;
 	
-	JobInfo 	_info;
-	std::string _codeFn;
-	Buffer      _genericData;
-	
-	Buffer      _result;
-	
+	std::vector<Resource> m_results;
+
 	bool        _isComplete;
 	
 	Job() {
@@ -62,23 +59,17 @@ struct Job {
 		
 		std::cout << "Job: Adding Resource!" << std::endl;
 
-		if(resource.type == RESOURCE_TYPE_JOB) {
+		if(resource.type == RESOURCE_TYPE_RESULT) {
+			
+			resource.destmanager = "net_manager";
+			m_results.push_back(resource);
 
-			_info = resource.info;
-		}
+		} else {
 
-		if(resource.type == RESOURCE_TYPE_CODE) {
-
-			_codeFn = resource.codeFn;
-
-			std::cout << "Job: filename: " << _codeFn << std::endl;
-		}
-
-		if(resource.type == RESOURCE_TYPE_DATA) {
-
-			_genericData = resource.buff;
-		}
+			m_resources.insert({resource.type, resource});
 		
+		}
+
 		removePreReq(resource.type);
 
 		return true;
@@ -88,15 +79,26 @@ struct Job {
 	
 		if(_preReqs.size() == 0) {
 
-			std::cout << "Job filename: " << _codeFn << std::endl;
+			Resource& codeRes = m_resources.at(RESOURCE_TYPE_CODE);
+			Resource& dataRes = m_resources.at(RESOURCE_TYPE_DATA);
+			Resource& infoRes = m_resources.at(RESOURCE_TYPE_JOB);
 
-			HMODULE dllHandle = LoadLibraryA(_codeFn.c_str());
+			std::cout << "Job: filename: " << codeRes.codeFn << std::endl;
+			std::cout << "Job: job name: ";
+
+			for(int i = 0; i < 20; i++) {
+				std::cout << infoRes.info.jobName[i];
+			}
+
+			std::cout << std::endl;
+
+			HMODULE dllHandle = LoadLibraryA(codeRes.codeFn.c_str());
 
 			FUNC func;
 
-			func = (FUNC) GetProcAddress(dllHandle, std::string(_info.jobName).c_str());
+			func = (FUNC) GetProcAddress(dllHandle, std::string(infoRes.jobName).c_str());
 
-			func(_genericData.getBase(), _genericData.getSize(), _result);
+			func(dataRes.buff.getBase(), dataRes.buff.getSize(), m_results[0]);
 			
 			_isComplete = true;
 			
@@ -119,9 +121,9 @@ struct Job {
 		return false;
 	}
 	
-	Buffer& getResult() {
+	std::vector<Resource>& getResults() {
 		
-		return _result;	
+		return m_results;	
 	}
 };
 

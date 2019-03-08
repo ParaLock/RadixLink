@@ -7,50 +7,49 @@ struct Resource {
 	
 	std::string   		destManager;
 	
-	char               	senderName[50];
+	char               	target[50];
 
 	unsigned int  		jobID;
 	int           		type;
+	bool  				isOutgoing;
 
 	JobInfo 	info;
 	std::string codeFn;
+	std::string dataFn;
 	Buffer      buff;
-	
-	struct Response {
-	
-		std::string sender;
-		size_t      reponseSize;
-		
-	} response;
-	
+	Buffer      result;
+
 	Resource() {
 		
+		isOutgoing = true;
 	}
 	
-	Resource(const Resource& other) {
-	
+	void init(const Resource& other) {
 		info = other.info;
 		jobID = other.jobID;
 		type = other.type;
 		
 		buff = other.buff;
-		
+		codeFn = other.codeFn;
 		response = other.response;
 
+		codeFn = other.codeFn;
+
 		destManager = other.destManager;
+
+		for(int i = 0; i < 20; i++) {
+			target[i] = other.target[i];
+		}
+	}
+
+	Resource(const Resource& other) {
+	
+		init(other);
 	}
 	
 	Resource(const Resource&& other) {
 	
-		info = other.info;
-		jobID = other.jobID;
-		type = other.type;
-		
-		buff = other.buff;
-		
-		response = other.response;
-
-		destManager = other.destManager;
+		init(other);
 	}
 };
 

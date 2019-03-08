@@ -17,9 +17,9 @@ private:
     std::string           m_name;
 public:
 
-    Manager(IDispatcher& dispatcher) : m_dispatcher(dispatcher) {
+    Manager(IDispatcher& dispatcher, std::string name) : m_dispatcher(dispatcher) {
 
-        m_name = typeid(T).name();
+        m_name = name;
 
         m_dispatcher.registerManager(m_name, this);
     }
@@ -27,13 +27,11 @@ public:
     void addResources(std::vector<Resource>& resources) {
 
         m_resourceQueue.insert(m_resourceQueue.end(), resources.begin(), resources.end());
-
-
     }
 
     void addResource(Resource& resource) {
 
-        m_resourceQueue.push_back(resource);
+        m_resourceQueue.push_back(std::move(resource));
     }
 
     std::string getName() {
@@ -44,7 +42,7 @@ public:
 
         for(int i = 0; i < num && m_resourceQueue.size() > 0; i++) {
 
-            resources.push_back(m_resourceQueue.back());
+            resources.push_back(std::move(m_resourceQueue.back()));
             m_resourceQueue.pop_back();
         }
     }

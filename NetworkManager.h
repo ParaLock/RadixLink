@@ -46,7 +46,7 @@ private:
 public:
 	
 	NetworkManager(IDispatcher& dispatcher, Decoder& decoder, Encoder& encoder) 
-		: Manager(dispatcher),
+		: Manager(dispatcher, "net_manager"),
 		  m_decoder(decoder),
 		  m_encoder(encoder)
 		  
