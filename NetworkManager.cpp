@@ -298,41 +298,44 @@ void NetworkManager::execute() {
         std::cout << "NetManager: writing resource over network: " << res[i].type << std::endl;
     }
 
+    Buffer                targetedBuff;
+    std::vector<Resource> targeted;
+    std::vector<std::string> targets;
 
-    Buffer buff;
-    
-    //std::string name = std::string(res[i].target);
+    Buffer                generalBuff;
+    std::vector<Resource> general;
 
-    //strcpy(res[i].target, m_name.c_str());
+    for(int i = 0; i < res.size(); i++) {
 
-    //std::vector<Resource> temp;
+        if(strcmp(res[i].target, "all") == 0) {
 
-    //for(int i = 0; i < res.size(); i++) {
+            general.push_back(res[i]);
 
-            //temp.push_back(res[i]);
+        } else {
+            
+            targets.push_back(res[i].target);
+            strcpy(res[i].target, m_name.c_str());
 
-
-            // std::vector<Resource> test;
-
-            // m_decoder.run(buff, test);
-
-            // for(int i = 0; i < test.size(); i++) {
-
-            //     std::cout << "NetManager: decoding test: " << test[i].type << std::endl;
-            // }
+            targeted.push_back(res[i]);
+        }
+    }
 
 
-    //}
+    m_encoder.run(targetedBuff, targeted);
+    m_encoder.run(generalBuff, general);
 
-    m_encoder.run(buff, res);
-
-    if(res.size() > 0) {
-
+    if(general.size() > 0) {
         for(int i = 0; i < m_activeConnections.size(); i++) {
 
-            write(m_activeConnections[i], buff);
+            write(m_activeConnections[i], generalBuff);
 
         }
     }
 
+
+    for(int i = 0; i < targeted.size(); i++) {
+        
+        write(targets[i], targetedBuff);
+    }
+    
 }

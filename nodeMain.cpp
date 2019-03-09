@@ -127,48 +127,6 @@ int main(int argc, char **argv) {
         }
     });
 
-    // Resource a;
-    // Resource b;
-    // Resource c;
-    // Resource d;
-
-    // char* data = "hello world!";
-
-    // JobInfo info;
-    // info.jobName[0] = 'h';
-    // info.jobName[1] = 'e';
-    // info.jobName[2] = 'l';
-    // info.jobName[3] = 'l';
-    // info.jobName[4] = 'o';
-    // info.jobName[5] = '\0';
-
-    // info.preReqs[0] = RESOURCE_TYPE_CODE;
-    // info.preReqs[1] = RESOURCE_TYPE_DATA;
-
-    // a.type          = RESOURCE_TYPE_JOB;
-    // a.jobID         = 0;
-    // a.info          = info;
-    // a.destManager   = typeid(JobManager).name();
-
-    // b.type          = RESOURCE_TYPE_CODE;
-    // b.jobID         = 0;
-    // b.codeFn        = std::to_string(b.jobID) + std::string(".dll");
-    // b.destManager   = typeid(JobManager).name();
-
-    // c.type          = RESOURCE_TYPE_DATA;
-    // c.jobID         = 0;
-    // c.destManager   = typeid(JobManager).name();
-
-    // c.buff.write(data, (int)strlen(data));
-
-    // std::vector<Resource> resources;
-    
-    // resources.push_back(c);
-    // resources.push_back(b);
-    // resources.push_back(a);
-
-    //dispatcher.dispatch(resources);
-
     std::map<int, std::function<void()>> primary_actions;
 
     primary_actions.insert({3, [&jobMan]() {
@@ -186,7 +144,7 @@ int main(int argc, char **argv) {
         std::cout << "data filename: ";
         std::cin >> data;
 
-        jobMan.createJob(codeFn, data, jobName, "localhost");
+        jobMan.createJob("example_dll.dll", "data.dat", "hello", "127.0.0.1");
     }});
 
     primary_actions.insert({2, [&netMan]() {

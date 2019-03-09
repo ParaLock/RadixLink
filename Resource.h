@@ -22,6 +22,11 @@ struct Resource {
 	Resource() {
 		
 		isOutgoing = true;
+
+		target[0] = 'a';
+		target[1] = 'l';
+		target[2] = 'l';
+		target[3] = '\0';
 	}
 	
 	void init(const Resource& other) {
@@ -39,7 +44,7 @@ struct Resource {
 
 		destManager = other.destManager;
 
-		for(int i = 0; i < 20; i++) {
+		for(int i = 0; i < 50; i++) {
 			target[i] = other.target[i];
 		}
 	}

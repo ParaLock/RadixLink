@@ -75,6 +75,8 @@ public:
 
     }
 
+    
+
     void createJob(std::string codeFn, std::string dataFn, std::string jobName, std::string nodeName) {
 
         int jobID = rand();
@@ -102,7 +104,6 @@ public:
         strcpy(job_resource.target, nodeName.c_str());
         strcpy(data_resource.target, nodeName.c_str());
         strcpy(code_resource.target, nodeName.c_str());
-
 
         Encoder::run(codeFn, code_resource.buff);
 
