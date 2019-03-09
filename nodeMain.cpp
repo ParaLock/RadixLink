@@ -169,66 +169,61 @@ int main(int argc, char **argv) {
 
     //dispatcher.dispatch(resources);
 
-    // std::map<int, std::function<void(std::vector<Resource>&)>> primary_actions;
+    std::map<int, std::function<void()>> primary_actions;
 
-    // primary_actions.insert({3, [&encoder](std::vector<Resource>& resources) {
+    primary_actions.insert({3, [&jobMan]() {
 
-    //     int         jobID;
-    //     std::string codeFn;
-    //     std::string jobName;
-    //     std::string data;
+        std::string codeFn;
+        std::string jobName;
+        std::string data;
 
-    //     std::cout << "job id: ";
-    //     std::cin >> jobID;
+        std::cout << "code filename(max length 20 char): ";
+        std::cin >> codeFn;
 
-    //     std::cout << "code filename(max length 20 char): ";
-    //     std::cin >> codeFn;
+        std::cout << "job name(max length 20 char): ";
+        std::cin >> jobName;
 
-    //     std::cout << "job name(max length 20 char): ";
-    //     std::cin >> jobName;
+        std::cout << "data filename: ";
+        std::cin >> data;
 
-    //     std::cout << "data: ";
-    //     std::cin >> data;
+        jobMan.createJob(codeFn, data, jobName, "localhost");
+    }});
 
+    primary_actions.insert({2, [&netMan]() {
 
+        std::cout << "Please enter node name: " << std::endl;
+        std::string nodeName = ""; 
 
-    // }});
-
-    if(*argv[1] == 'S') {
-        
-        std::cout << "Creating Server: " << std::endl;
-
-        netMan.createServer(DEFAULT_PORT);
-
-        std::cout << "When client is active press a number" << std::endl;
-        int test = 0;
-        std::cin >> test;
-
-        jobMan.createJob("example_dll.dll", "data.dat", "hello", "localhost");
-    
-    } else if(*argv[1] == 'C') {
-        
-        std::cout << "Creating Client: " << std::endl;
-
+        std::cin >> nodeName;
 
         netMan.connectToNode("localhost", DEFAULT_PORT);
 
+    }});
+
+    primary_actions.insert({1, [&netMan]() {
+
+        netMan.createServer(DEFAULT_PORT);
+
+    }});
+
+    int op = 0;
+
+    while(op < 6) {
+    
+        std::cout << "1) Enable This Node" << std::endl;
+        std::cout << "2) Connect to Node" << std::endl;
+        std::cout << "3) Create Job" << std::endl;
+        std::cout << "4) See Current Outgoing Jobs" << std::endl;
+        std::cout << "5) See Current Incoming Jobs" << std::endl;
+        std::cout << "6) Exit" << std::endl;
+    
+        std::cin >> op;
+
+        primary_actions.at(op)();
+
     }
 
-    int num = 0;
-    std::cin >> num;
-
-        // std::cout << "1) Enable This Node" << std::endl;
-        // std::cout << "2) Connect to Node" << std::endl;
-        // std::cout << "3) Create Job" << std::endl;
-        // std::cout << "4) See Job results" << std::endl;
-        
-
-    
-    
     WSACleanup();
-    //netMan.start();
-    //jobMan.start();
 
    return 0;
 }
