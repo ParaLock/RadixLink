@@ -47,6 +47,11 @@ public:
         }
     }
 
+    int getNumPendingResources() {
+
+        return m_resourceQueue.size();
+    }
+
     void putResources(std::vector<Resource>& resources) {
 
         m_dispatcher.dispatch(resources);

@@ -41,10 +41,7 @@ struct Job {
 			}
 		}
 		
-		if(_preReqs.size() == 0) {
 		
-			_isComplete = true;
-		}
 	}
 
 	void addPreReq(int type) {
@@ -61,7 +58,7 @@ struct Job {
 
 		if(resource.type == RESOURCE_TYPE_RESULT) {
 			
-			resource.destmanager = "net_manager";
+			resource.destManager = "net_manager";
 			m_results.push_back(resource);
 
 		} else {
@@ -96,10 +93,14 @@ struct Job {
 
 			FUNC func;
 
-			func = (FUNC) GetProcAddress(dllHandle, std::string(infoRes.jobName).c_str());
-
-			func(dataRes.buff.getBase(), dataRes.buff.getSize(), m_results[0]);
+			func = (FUNC) GetProcAddress(dllHandle, std::string(infoRes.info.jobName).c_str());
 			
+			std::cout << "****************************RUNNING JOB!!!!**********************" << std::endl;
+ 
+			func(dataRes.buff.getBase(), dataRes.buff.getSize(), m_results[0].result);
+			
+			std::cout << "*****************************************************************" << std::endl;
+
 			_isComplete = true;
 			
 			FreeLibrary(dllHandle);

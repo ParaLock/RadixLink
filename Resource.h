@@ -31,9 +31,11 @@ struct Resource {
 		
 		buff = other.buff;
 		codeFn = other.codeFn;
-		response = other.response;
+		dataFn = other.dataFn;
 
-		codeFn = other.codeFn;
+		result = other.result;
+
+		isOutgoing = other.isOutgoing;
 
 		destManager = other.destManager;
 

@@ -21,6 +21,12 @@ public:
             
             std::cout << "JobManager: new resource received: " << resources[i].type << std::endl;
 
+            if(resources[i].type == RESOURCE_TYPE_RESULT) {
+
+                m_currentOutgoingJobs.at(resources[i].jobID).addResource(resources[i]);
+
+                continue;
+            }
 
             if(resources[i].type == RESOURCE_TYPE_JOB) {
                 
@@ -50,13 +56,11 @@ public:
 
         for (auto it = m_currentIncomingJobs.begin(); it != m_currentIncomingJobs.end(); it++ ) {
             
-            if(it->second.isRunnable()) {
-
-                std::cout << "JobManager: Running Job" << std::endl;
+            if(it->second.isRunnable() && !it->second.isComplete()) {
 
                 it->second.execute();
 
-                m_dispatcher.dispatch(it->second.getResults());
+                putResources(it->second.getResults());
             }
         }
 
@@ -65,7 +69,7 @@ public:
             //In this case, the job is complete if all prereqs have been satisfied.
             if(it->second.isRunnable()) {
 
-                std::cout << "JobManager: Job Complete: " << std::endl;
+                //std::cout << "JobManager: Job Complete: " << std::endl;
             }
         }
 
@@ -75,8 +79,14 @@ public:
 
         int jobID = rand();
 
+        std::cout << "Creating job: " << jobID << std::endl;
+
         Job newJob;
         JobInfo info;
+
+        info.preReqs[0] = RESOURCE_TYPE_JOB;
+        info.preReqs[1] = RESOURCE_TYPE_CODE;
+        info.preReqs[2] = RESOURCE_TYPE_DATA;
 
         strcpy(info.jobName, jobName.c_str());
  
@@ -87,6 +97,7 @@ public:
         job_resource.type          = RESOURCE_TYPE_JOB;
         job_resource.jobID         = jobID;
         job_resource.info          = info;
+        job_resource.destManager   = "net_manager";
 
         strcpy(job_resource.target, nodeName.c_str());
         strcpy(data_resource.target, nodeName.c_str());
@@ -97,12 +108,27 @@ public:
 
         code_resource.type          = RESOURCE_TYPE_CODE;
         code_resource.jobID         = jobID;
-        code_resource.codeFn        = std::to_string(b.jobID) + std::string(".dll");
+        code_resource.codeFn        = std::to_string(jobID) + std::string(".dll");
+        code_resource.destManager   = "net_manager";
 
         data_resource.type          = RESOURCE_TYPE_DATA;
         data_resource.jobID         = jobID;
+        data_resource.destManager   = "net_manager";
+
+        Encoder::run(dataFn, data_resource.buff);
+
+        m_currentOutgoingJobs.insert({jobID, newJob});
+
+        std::vector<Resource> temp;
+        
+        temp.push_back(job_resource);
+        temp.push_back(data_resource);
+        temp.push_back(code_resource);
 
 
+        putResources(temp);
+
+        std::cout << "JobManager: Finished creating job" << std::endl;
     }
 	
 };

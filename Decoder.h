@@ -29,9 +29,11 @@ struct Decoder {
 			
 			jobRes.type  = header->type;
 			jobRes.jobID = header->jobID;
-			
+
 			char* payload = (char*)header + sizeof(EncoderHeader);
 			
+			std::cout << "Decoder: Decoded Resource Type: " << jobRes.type << std::endl;
+
 			m_decoders.at(jobRes.type)(header, payload, jobRes);
 							
 			resources.push_back(std::move(jobRes));

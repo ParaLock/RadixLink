@@ -26,6 +26,7 @@
 #include "Decoder.h"
 #include "Encoder.h"
 #include "IDispatcher.h"
+#include "Resource.h"
 
 const unsigned int MAX_BLOCK_SIZE = 500; 
 
@@ -33,15 +34,19 @@ class NetworkManager : public Manager<NetworkManager> {
 private:
 
 	std::map<std::string, SOCKET> m_connections;
-	std::map<std::string, SOCKET> m_clients;
-	std::map<std::string, SOCKET> m_listeners;
+
+	SOCKET  					  m_listenSocket;
 	
-	std::vector<std::string>      m_activeClients;
+	std::vector<std::string>      m_activeConnections;
 	
-	std::string m_thisNode;
+	bool                          m_serverCreated;
+	bool 						  m_listening;
+	std::string m_name;
 
 	Decoder&     m_decoder;
 	Encoder&     m_encoder;
+
+	std::thread  m_conListener;
 	
 public:
 	
@@ -51,17 +56,21 @@ public:
 		  m_encoder(encoder)
 		  
 	{
-		
+		m_listenSocket = INVALID_SOCKET;
+		m_serverCreated = false;
+		m_listening     = true;
+
+		m_conListener = std::thread(&NetworkManager::acceptConnection, this);
 	}
-	
-	bool connectToNode(std::string nodeName, const char* target, const char* port);
+
+	bool connectToNode(const char* target, const char* port);
 	bool disconnect(std::string nodeName);
 	
 	bool write(std::string nodeName, Buffer& buff);
 	bool read(std::string nodeName, Buffer& buff);
 	
-	bool createServer(std::string nodeName, const char* port);
-	bool acceptConnection(std::string nodeName, std::string serverName);
+	bool createServer(const char* port);
+	bool acceptConnection();
 	
 	void execute();
 	

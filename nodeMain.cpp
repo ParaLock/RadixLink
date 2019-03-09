@@ -8,13 +8,26 @@
 #include <iostream>
 
 int main(int argc, char **argv) {
+
+
+    WSADATA wsaData;
+
+    int iResult;
+
+    // Initialize Winsock
+    iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+    if (iResult != 0) {
+        printf("WSAStartup failed: %d\n", iResult);
+        return 1;
+    }
+
     srand(time(NULL));
     Encoder encoder;
     Decoder decoder;
 
     decoder.registerHandler(RESOURCE_TYPE_CODE, [](EncoderHeader* header, char* payload, Resource& resource) {
 
-        std::cout << "Decoder: Code section detected!" << std::endl;
+        std::cout << "Decoder: Code section detected! " << "payload size: " << header->payloadSize << std::endl;
         
         resource.codeFn = std::to_string(resource.jobID) + std::string(".dll");
         
@@ -31,7 +44,7 @@ int main(int argc, char **argv) {
 
     decoder.registerHandler(RESOURCE_TYPE_JOB, [](EncoderHeader* header, char* payload, Resource& resource) {
 
-        std::cout << "Decoder: Job section detected!" << std::endl;
+        std::cout << "Decoder: Job section detected!" << " payload size: " << header->payloadSize << std::endl;
         
         resource.info = *(JobInfo*)payload;
         
@@ -41,7 +54,7 @@ int main(int argc, char **argv) {
 
     decoder.registerHandler(RESOURCE_TYPE_DATA, [](EncoderHeader* header, char* payload, Resource& resource) {
 
-        std::cout << "Decoder: Data section detected!" << "payload size: " << header->payloadSize << std::endl;
+        std::cout << "Decoder: Data section detected!" << " payload size: " << header->payloadSize << std::endl;
 
         resource.buff.write(payload, header->payloadSize);
 
@@ -49,6 +62,8 @@ int main(int argc, char **argv) {
     });
 
     encoder.registerHandler(RESOURCE_TYPE_CODE, [](Buffer& buff, Resource& resource) {
+
+        std::cout << "Encoder: Code section detected!" << " payload size: " << resource.buff.getSize() << std::endl;
 
         EncoderHeader header;
         header.type        = resource.type;
@@ -63,9 +78,11 @@ int main(int argc, char **argv) {
 
     encoder.registerHandler(RESOURCE_TYPE_JOB, [](Buffer& buff, Resource& resource) {
 
+        std::cout << "Encoder: Job section detected!" << " payload size: " << sizeof(decltype(resource.info)) << std::endl;
+
         EncoderHeader header;
         header.type        = resource.type;
-        header.payloadSize = resource.buff.getSize();
+        header.payloadSize = sizeof(decltype(resource.info));
         header.jobID       = resource.jobID;
 
         buff.write((char*)&header, sizeof(EncoderHeader));
@@ -75,6 +92,9 @@ int main(int argc, char **argv) {
     });
 
     encoder.registerHandler(RESOURCE_TYPE_DATA, [](Buffer& buff, Resource& resource) {
+
+        std::cout << "Encoder: Data section detected!" << " payload size: " << resource.buff.getSize() << std::endl;
+
 
         EncoderHeader header;
         header.type        = resource.type;
@@ -101,8 +121,10 @@ int main(int argc, char **argv) {
 
 
     auto myThread = std::thread([&netMan, &jobMan]() {
-        netMan.execute();
-        jobMan.execute();
+        while(true) {
+            netMan.execute();
+            jobMan.execute();
+        }
     });
 
     // Resource a;
@@ -172,20 +194,39 @@ int main(int argc, char **argv) {
 
     // }});
 
-    netManager.createServer();
-
-    jobManager.createJob("example_dll.dll", "hello", "data.dat", "nodeA");
-
-    while(true) {
-
-        std::cout << "1) Enable This Node" << std::endl;
-        std::cout << "2) Connect to Node" << std::endl;
-        std::cout << "3) Create Job" << std::endl;
-        std::cout << "4) See Job results" << std::endl;
+    if(*argv[1] == 'S') {
         
+        std::cout << "Creating Server: " << std::endl;
+
+        netMan.createServer(DEFAULT_PORT);
+
+        std::cout << "When client is active press a number" << std::endl;
+        int test = 0;
+        std::cin >> test;
+
+        jobMan.createJob("example_dll.dll", "data.dat", "hello", "localhost");
+    
+    } else if(*argv[1] == 'C') {
+        
+        std::cout << "Creating Client: " << std::endl;
+
+
+        netMan.connectToNode("localhost", DEFAULT_PORT);
 
     }
 
+    int num = 0;
+    std::cin >> num;
+
+        // std::cout << "1) Enable This Node" << std::endl;
+        // std::cout << "2) Connect to Node" << std::endl;
+        // std::cout << "3) Create Job" << std::endl;
+        // std::cout << "4) See Job results" << std::endl;
+        
+
+    
+    
+    WSACleanup();
     //netMan.start();
     //jobMan.start();
 
