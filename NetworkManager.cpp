@@ -97,22 +97,17 @@ bool NetworkManager::write(std::string nodeName, Buffer& buff) {
 
 	SOCKET ConnectSocket = m_connections.at(nodeName);
 	
-    // Send an initial buffer
-	int iResult;
-	
 	size_t size = buff.getSize();
-	
-	send( ConnectSocket, (char*)&size, sizeof(size_t), 0);
-	
-    iResult = send( ConnectSocket, buff.getBase(), buff.getSize(), 0 );
-	
-	if (iResult == SOCKET_ERROR) {
-        printf("send failed with error: %d\n", WSAGetLastError());
-        closesocket(ConnectSocket);
-        return false;
-    }
+    size_t bytesSent = 0;
+    int iResult = 0;
 
-    printf("Bytes Sent: %ld\n", iResult);
+	send( ConnectSocket, (char*)&size, sizeof(size_t), 0);
+
+    do {
+
+        iResult = send(ConnectSocket, buff.getBase() + bytesSent, size - bytesSent, 0);
+        bytesSent += iResult;
+    } while(bytesSent < size);
 	
 	return true;
 }
@@ -128,14 +123,12 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
         return false;
     }
 
-	int iResult;
-	
 	SOCKET clientSocket = m_connections.at(nodeName);
 	
 	size_t bytesReceived = 0;
 	size_t size = 0;
 
-    unsigned long readableBytes = 0;
+    u_long readableBytes = 0;
 	
     ioctlsocket(clientSocket, FIONREAD, &readableBytes);
 
@@ -144,21 +137,27 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
         return false;
     }
 
+    std::cout << "NetManager: Readable bytes on socket: " << readableBytes << std::endl;
+
 	recv(clientSocket, (char*)&size, sizeof(size_t), 0);
 
-	for(int i = 0; i < size; i++) {
-
-		char junk = 'f';
-		buff.write(&junk, sizeof(char));
-	}
-	  
-    // Receive until the peer shuts down the connection
-  do {
-
-        bytesReceived += recv(clientSocket, buff.getBase() + bytesReceived, MAX_BLOCK_SIZE, 0);
-		
-    } while (bytesReceived < size);
+    std::cout << "NetManager: Incoming buffer size: " << size << std::endl;
 	
+    for(int i = 0; i < size; i++) {
+        char junk = 'f';
+
+        buff.write(&junk, sizeof(char));
+    }
+
+    // Receive until the peer shuts down the connection
+   do {
+        bytesReceived += recv(clientSocket, buff.getBase() + bytesReceived, size - bytesReceived, 0);
+		
+    }  while(bytesReceived < size);
+	
+    printf("Bytes Received: %ld\n", bytesReceived);
+	
+
 	return true;
 }
 
@@ -298,8 +297,10 @@ void NetworkManager::execute() {
         std::cout << "NetManager: writing resource over network: " << res[i].type << std::endl;
     }
 
+    //std::map<std::string, Buffer>      targeted;
     std::vector<Buffer>      targeted;
     std::vector<std::string> targets;
+
 
     Buffer                generalBuff;
     std::vector<Resource> general;
@@ -312,6 +313,19 @@ void NetworkManager::execute() {
 
         } else {
             
+            //auto itr = targeted.find(res[i].target);
+
+            //if(itr == targeted.end()) {
+
+              //  targeted.insert({res[i].target, Buffer()});
+           //}
+
+            //Buffer& buff = targeted.at(res[i].target);
+
+            //strcpy(res[i].target, m_name.c_str());
+
+            //m_encoder.run(buff, res[i]);
+        
             Buffer buff;
             targeted.push_back(buff);
 
@@ -319,7 +333,6 @@ void NetworkManager::execute() {
             strcpy(res[i].target, m_name.c_str());
 
             m_encoder.run(targeted.back(), res[i]);
-
         }
     }
 
@@ -328,11 +341,19 @@ void NetworkManager::execute() {
     if(general.size() > 0) {
         for(int i = 0; i < m_activeConnections.size(); i++) {
 
+            std::cout << "NetManager: sending multi-cast resources..." << std::endl;
+
             write(m_activeConnections[i], generalBuff);
 
         }
     }
 
+    // for (auto it = targeted.begin(); it != targeted.end(); it++ ) {
+            
+    //     std::cout << "NetManager: sending targeted resources to " << it->first << std::endl;
+
+    //     write(it->first, it->second); 
+    // }
 
     for(int i = 0; i < targeted.size(); i++) {
         
@@ -340,5 +361,4 @@ void NetworkManager::execute() {
 
         write(targets[i], targeted[i]);
     }
-    
 }

@@ -28,7 +28,7 @@
 #include "IDispatcher.h"
 #include "Resource.h"
 
-const unsigned int MAX_BLOCK_SIZE = 500; 
+const unsigned int MAX_BLOCK_SIZE = 512; 
 
 class NetworkManager : public Manager<NetworkManager> {
 private:
@@ -48,6 +48,16 @@ private:
 
 	std::thread  m_conListener;
 	
+	struct Packet {
+
+		Packet() {
+			size = 0;
+		}
+
+		size_t  size;
+		char    data[MAX_BLOCK_SIZE];
+	};
+
 public:
 	
 	NetworkManager(IDispatcher& dispatcher, Decoder& decoder, Encoder& encoder) 

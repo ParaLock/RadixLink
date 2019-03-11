@@ -9,76 +9,24 @@
 struct Job {
 	
 	typedef void (*FUNC)(char *, size_t, Buffer& out);
-	
-	std::vector<int> _preReqs;
+
 	std::map<int, Resource>    m_resources;
 	
 	std::vector<Resource>      m_results;
-	std::vector<int>           m_cachedPreReqs;
 
 	bool        _isComplete;
-	bool        _hasPreReqs;
+
+	bool        _hasCode;
+	bool        _hasData;
+	bool        _hasJob;
 
 	Job() {
 		
+		_hasCode = false;
+		_hasData = false;
+		_hasJob  = false;
+
 		_isComplete = false;
-		_hasPreReqs = false;
-	}
-	
-	void removePreReq(int type) {
-		
-
-
-		if(!_hasPreReqs) {
-			
-			std::cout << "Job: Caching prereq: " << type << std::endl;
-
-			m_cachedPreReqs.push_back(type);
-
-		} else {
-
-			std::cout << "Job: remove prereq called with " <<  type << " current num prereqs " << _preReqs.size() << std::endl;
-
-			for(int i = 0; i < _preReqs.size(); i++) {
-				
-				std::cout << "Job: checking prereq: " <<  type << std::endl;
-
-
-				if(_preReqs[i] == type) {
-									
-					std::cout << "Job: removed prereq: " <<  _preReqs[i] << std::endl;
-
-					_preReqs.erase(_preReqs.begin() + i);
-
-					break;
-				}
-			}
-			
-
-		}
-	}
-
-	void addPreReq(int type) {
-
-		//We can do this because all prereqs are always recieved at once
-		if(!_hasPreReqs) {
-			_hasPreReqs = true;
-		}
-
-		//if we have resource already remove prereq
-		for(int i = 0; i < m_cachedPreReqs.size(); i++) {
-			
-			if(m_cachedPreReqs[i] == type) {
-
-				removePreReq(type);
-
-				m_cachedPreReqs.erase(_preReqs.begin() + i);
-			}
-		}
-
-		std::cout << "Job: add prereq " << type << std::endl;
-
-		_preReqs.push_back(type);
 	}
 	
 	//Returns true if job setup is finalized
@@ -86,25 +34,37 @@ struct Job {
 		
 		std::cout << "Job: Adding Resource!" << std::endl;
 
+		//yup... this is wicked gross.. TODO: Implement working generic prereq system.
 		if(resource.type == RESOURCE_TYPE_RESULT) {
 			
 			resource.destManager = "net_manager";
 			m_results.push_back(resource);
 
-		} else {
+		} else if(resource.type == RESOURCE_TYPE_CODE) {
+
+			_hasCode = true;
 
 			m_resources.insert({resource.type, resource});
 		
-		}
+		} else if(resource.type == RESOURCE_TYPE_DATA) {
 
-		removePreReq(resource.type);
+			m_resources.insert({resource.type, resource});
+
+			_hasData = true;
+
+		} else if(resource.type == RESOURCE_TYPE_JOB) {
+
+			m_resources.insert({resource.type, resource});
+
+			_hasJob = true;
+		}
 
 		return true;
 	}
 	
 	void execute() {
 	
-		if(_preReqs.size() == 0) {
+		if(isRunnable()) {
 
 			Resource& codeRes = m_resources.at(RESOURCE_TYPE_CODE);
 			Resource& dataRes = m_resources.at(RESOURCE_TYPE_DATA);
@@ -144,12 +104,7 @@ struct Job {
 
 	bool isRunnable() {
 
-		if(_preReqs.size() == 0) {
-
-			return true;	
-		} 
-
-		return false;
+		return _hasCode && _hasData && _hasJob;
 	}
 	
 	std::vector<Resource>& getResults() {

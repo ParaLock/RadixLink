@@ -24,34 +24,17 @@ public:
             auto itr = m_currentIncomingJobs.find(resources[i].jobID);
 
             if(itr == m_currentIncomingJobs.end()) {
+                
+                std::cout << "JobManager: Creating new Job: " << resources[i].jobID << std::endl;
 
-                m_currentIncomingJobs.insert({resources[i].jobID, std::move(Job())});
+                Job job;
+
+                m_currentIncomingJobs.insert({resources[i].jobID, job});
             }
+
+            std::cout << "JobManager: Adding resource to job: " << resources[i].jobID << std::endl;
 
             Job& job = m_currentIncomingJobs.at(resources[i].jobID);
-
-            if(resources[i].type == RESOURCE_TYPE_RESULT) {
-
-                m_currentOutgoingJobs.at(resources[i].jobID).addResource(resources[i]);
-
-                continue;
-            }
-
-            if(resources[i].type == RESOURCE_TYPE_JOB) {
-                
-                std::cout << "JobManager: Creating Job" << std::endl;
-
-                int count = 0;
-                while(resources[i].info.preReqs[count] != -1) {
-
-                    std::cout << "JobManager: Adding Job PreReq!" << std::endl;
-
-                    job.addPreReq(resources[i].info.preReqs[count]);
-
-                    count++;
-                }
-                
-            }
 
             job.addResource(resources[i]); 
             
@@ -59,11 +42,15 @@ public:
 
         for (auto it = m_currentIncomingJobs.begin(); it != m_currentIncomingJobs.end(); it++ ) {
             
-            if(it->second.isRunnable() && !it->second.isComplete()) {
+            //std::cout << "HAS JOB: " << it->second._hasJob << std::endl;
+            //std::cout << "HAS DATA: " << it->second._hasData << std::endl;
+            //std::cout << "HAS CODE: " << it->second._hasCode << std::endl;
+
+            if(!it->second.isComplete()) {
 
                 it->second.execute();
 
-                putResources(it->second.getResults());
+                //putResources(it->second.getResults());
             }
         }
 
@@ -88,10 +75,6 @@ public:
 
         Job newJob;
         JobInfo info;
-
-        info.preReqs[0] = RESOURCE_TYPE_JOB;
-        info.preReqs[1] = RESOURCE_TYPE_CODE;
-        info.preReqs[2] = RESOURCE_TYPE_DATA;
 
         strcpy(info.jobName, jobName.c_str());
  
