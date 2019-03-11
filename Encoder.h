@@ -34,12 +34,18 @@ struct Encoder {
 
 	bool run(Buffer& buff, std::vector<Resource>& resources) {
 
-
 		for(int i = 0; i < resources.size(); i++) {
 
-			m_encoders.at(resources[i].type)(buff, resources[i]);
+			run(buff, resources[i]);	
 		}
 
+		return true;
+	}
+
+	bool run(Buffer& buff, Resource& resource) {
+		
+		m_encoders.at(resource.type)(buff, resource);
+		
 		return true;
 	}
 

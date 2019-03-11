@@ -298,8 +298,7 @@ void NetworkManager::execute() {
         std::cout << "NetManager: writing resource over network: " << res[i].type << std::endl;
     }
 
-    Buffer                targetedBuff;
-    std::vector<Resource> targeted;
+    std::vector<Buffer>      targeted;
     std::vector<std::string> targets;
 
     Buffer                generalBuff;
@@ -313,15 +312,17 @@ void NetworkManager::execute() {
 
         } else {
             
+            Buffer buff;
+            targeted.push_back(buff);
+
             targets.push_back(res[i].target);
             strcpy(res[i].target, m_name.c_str());
 
-            targeted.push_back(res[i]);
+            m_encoder.run(targeted.back(), res[i]);
+
         }
     }
 
-
-    m_encoder.run(targetedBuff, targeted);
     m_encoder.run(generalBuff, general);
 
     if(general.size() > 0) {
@@ -335,7 +336,9 @@ void NetworkManager::execute() {
 
     for(int i = 0; i < targeted.size(); i++) {
         
-        write(targets[i], targetedBuff);
+        std::cout << "NetManager: sending targeted resource to " << targets[i] << std::endl;
+
+        write(targets[i], targeted[i]);
     }
     
 }

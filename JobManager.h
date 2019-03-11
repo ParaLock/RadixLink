@@ -21,6 +21,15 @@ public:
             
             std::cout << "JobManager: new resource received: " << resources[i].type << std::endl;
 
+            auto itr = m_currentIncomingJobs.find(resources[i].jobID);
+
+            if(itr == m_currentIncomingJobs.end()) {
+
+                m_currentIncomingJobs.insert({resources[i].jobID, std::move(Job())});
+            }
+
+            Job& job = m_currentIncomingJobs.at(resources[i].jobID);
+
             if(resources[i].type == RESOURCE_TYPE_RESULT) {
 
                 m_currentOutgoingJobs.at(resources[i].jobID).addResource(resources[i]);
@@ -32,24 +41,18 @@ public:
                 
                 std::cout << "JobManager: Creating Job" << std::endl;
 
-                Job newJob;
-
-                    
                 int count = 0;
                 while(resources[i].info.preReqs[count] != -1) {
 
                     std::cout << "JobManager: Adding Job PreReq!" << std::endl;
 
-                    newJob.addPreReq(resources[i].info.preReqs[count]);
+                    job.addPreReq(resources[i].info.preReqs[count]);
 
                     count++;
                 }
-
-                m_currentIncomingJobs.insert({resources[i].jobID, std::move(newJob)});
                 
             }
 
-            Job& job = m_currentIncomingJobs.at(resources[i].jobID);
             job.addResource(resources[i]); 
             
         }

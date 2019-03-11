@@ -11,40 +11,70 @@ struct Job {
 	typedef void (*FUNC)(char *, size_t, Buffer& out);
 	
 	std::vector<int> _preReqs;
-	std::map<int, Resource> m_resources;
+	std::map<int, Resource>    m_resources;
 	
-	std::vector<Resource> m_results;
+	std::vector<Resource>      m_results;
+	std::vector<int>           m_cachedPreReqs;
 
 	bool        _isComplete;
-	
+	bool        _hasPreReqs;
+
 	Job() {
 		
 		_isComplete = false;
+		_hasPreReqs = false;
 	}
 	
 	void removePreReq(int type) {
 		
-		std::cout << "Job: remove prereq called with " <<  type << " current num prereqs " << _preReqs.size() << std::endl;
 
-		for(int i = 0; i < _preReqs.size(); i++) {
+
+		if(!_hasPreReqs) {
 			
-			std::cout << "Job: checking prereq: " <<  type << std::endl;
+			std::cout << "Job: Caching prereq: " << type << std::endl;
+
+			m_cachedPreReqs.push_back(type);
+
+		} else {
+
+			std::cout << "Job: remove prereq called with " <<  type << " current num prereqs " << _preReqs.size() << std::endl;
+
+			for(int i = 0; i < _preReqs.size(); i++) {
+				
+				std::cout << "Job: checking prereq: " <<  type << std::endl;
 
 
-			if(_preReqs[i] == type) {
-								
-				std::cout << "Job: removed prereq: " <<  _preReqs[i] << std::endl;
+				if(_preReqs[i] == type) {
+									
+					std::cout << "Job: removed prereq: " <<  _preReqs[i] << std::endl;
 
-				_preReqs.erase(_preReqs.begin() + i);
+					_preReqs.erase(_preReqs.begin() + i);
 
-				break;
+					break;
+				}
 			}
+			
+
 		}
-		
-		
 	}
 
 	void addPreReq(int type) {
+
+		//We can do this because all prereqs are always recieved at once
+		if(!_hasPreReqs) {
+			_hasPreReqs = true;
+		}
+
+		//if we have resource already remove prereq
+		for(int i = 0; i < m_cachedPreReqs.size(); i++) {
+			
+			if(m_cachedPreReqs[i] == type) {
+
+				removePreReq(type);
+
+				m_cachedPreReqs.erase(_preReqs.begin() + i);
+			}
+		}
 
 		std::cout << "Job: add prereq " << type << std::endl;
 
