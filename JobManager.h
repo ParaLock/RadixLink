@@ -77,7 +77,18 @@ public:
 
     }
 
-    
+    void printJobResults(int jobID) {
+        
+        std::cout << "Printing results of job " << jobID << " -> "<< std::endl;
+
+        Job& job = m_currentOutgoingJobs.at(jobID);
+
+        std::vector<Resource>& results = job.getResults();
+
+        for(int i = 0; i < results.size(); i++) {
+            results[i].buff.print();
+        }
+    }
 
     void createJob(std::string codeFn, std::string dataFn, std::string jobName, std::string nodeName) {
 
@@ -86,6 +97,7 @@ public:
         std::cout << "Creating job: " << jobID << std::endl;
 
         Job newJob;
+        newJob.id = jobID;
         newJob._isRemoteInstance = false;
 
         JobInfo info;

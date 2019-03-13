@@ -197,18 +197,29 @@ int main(int argc, char **argv) {
 
     }});
 
-    primary_actions.insert({6, []{}});
+    primary_actions.insert({6, [&jobMan]{
+        
+        int jobID = -1;
+
+        std::cout << "Please enter job id: ";
+        std::cin >> jobID;
+
+        jobMan.printJobResults(jobID);
+    }});
+
+    primary_actions.insert({7, []{}});
 
     int op = 0;
 
-    while(op < 6) {
+    while(op < 7) {
     
         std::cout << "1) Enable This Node" << std::endl;
         std::cout << "2) Connect to Node" << std::endl;
         std::cout << "3) Create Job" << std::endl;
         std::cout << "4) See Current Outgoing Jobs" << std::endl;
         std::cout << "5) See Current Incoming Jobs" << std::endl;
-        std::cout << "6) Exit" << std::endl;
+        std::cout << "6) To View Job Result" << std::endl;
+        std::cout << "7) Exit" << std::endl;
     
         std::cin >> op;
 

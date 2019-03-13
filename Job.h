@@ -15,6 +15,8 @@ struct Job {
 
 	Resource 				   m_result;
 
+	int id;
+
 	bool        _isComplete;
 
 	bool        _hasCode;
