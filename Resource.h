@@ -11,7 +11,6 @@ struct Resource {
 
 	unsigned int  		jobID;
 	int           		type;
-	bool  				isOutgoing;
 
 	JobInfo 	info;
 	std::string codeFn;
@@ -21,8 +20,6 @@ struct Resource {
 
 	Resource() {
 		
-		isOutgoing = true;
-
 		target[0] = 'a';
 		target[1] = 'l';
 		target[2] = 'l';
@@ -40,8 +37,6 @@ struct Resource {
 
 		result = other.result;
 
-		isOutgoing = other.isOutgoing;
-
 		destManager = other.destManager;
 
 		for(int i = 0; i < 50; i++) {
@@ -56,6 +51,11 @@ struct Resource {
 	
 	Resource(const Resource&& other) {
 	
+		init(other);
+	}
+
+	void operator=(const Resource& other) {
+
 		init(other);
 	}
 };

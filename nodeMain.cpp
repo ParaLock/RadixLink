@@ -48,7 +48,6 @@ int main(int argc, char **argv) {
         
         resource.info = *(JobInfo*)payload;
         
-        resource.isOutgoing = false;
         resource.destManager = "job_manager";
     });
 
@@ -57,6 +56,22 @@ int main(int argc, char **argv) {
         std::cout << "Decoder: Data section detected!" << " payload size: " << header->payloadSize << std::endl;
 
         resource.buff.write(payload, header->payloadSize);
+
+        resource.destManager = "job_manager";
+    });
+
+    decoder.registerHandler(RESOURCE_TYPE_RESULT, [](EncoderHeader* header, char* payload, Resource& resource) {
+
+        std::cout << "Decoder: Result section detected!" << " payload size: " << header->payloadSize << std::endl;
+
+        size_t targetOffset = header->payloadSize - sizeof(resource.target);
+
+        resource.buff.write(payload, targetOffset);
+        
+        for(int i = 0; i < sizeof(resource.target); i++) {
+  
+            resource.target[i] = (char)(payload + targetOffset)[i];
+        }
 
         resource.destManager = "job_manager";
     });
@@ -73,7 +88,6 @@ int main(int argc, char **argv) {
         buff.write((char*)&header, sizeof(EncoderHeader));
         buff.write(resource.buff.getBase(), header.payloadSize);
 
-        resource.destManager = "job_manager";
     });
 
     encoder.registerHandler(RESOURCE_TYPE_JOB, [](Buffer& buff, Resource& resource) {
@@ -87,8 +101,6 @@ int main(int argc, char **argv) {
 
         buff.write((char*)&header, sizeof(EncoderHeader));
         buff.write((char*)&resource.info, sizeof(decltype(resource.info)));
-
-        resource.destManager = "job_manager";
     });
 
     encoder.registerHandler(RESOURCE_TYPE_DATA, [](Buffer& buff, Resource& resource) {
@@ -101,16 +113,25 @@ int main(int argc, char **argv) {
         header.payloadSize = resource.buff.getSize();
         header.jobID       = resource.jobID;
 
-        //if(resource.dataFn.size() > 0) {
+        buff.write((char*)&header, sizeof(EncoderHeader));
+        buff.write(resource.buff.getBase(), header.payloadSize);
 
-        //} else {
-
-
-            buff.write((char*)&header, sizeof(EncoderHeader));
-            buff.write(resource.buff.getBase(), header.payloadSize);
-        //}
-        
         resource.destManager = "job_manager";
+    });
+
+    encoder.registerHandler(RESOURCE_TYPE_RESULT, [](Buffer& buff, Resource& resource) {
+
+        std::cout << "Encoder: Result section detected!" << " payload size: " << resource.buff.getSize() << std::endl;
+
+        EncoderHeader header;
+        header.type         = resource.type;
+        header.payloadSize  = resource.buff.getSize() + sizeof(resource.target);
+        header.jobID        = resource.jobID;
+
+        buff.write((char*)&header, sizeof(EncoderHeader));
+        buff.write(resource.buff.getBase(), resource.buff.getSize());
+        buff.write((char*)&resource.target, sizeof(resource.target));
+
     });
 
     Dispatcher dispatcher;
@@ -118,12 +139,15 @@ int main(int argc, char **argv) {
     NetworkManager netMan(dispatcher, decoder, encoder);
     JobManager     jobMan(dispatcher);
 
+    bool isRunning = true;
 
 
-    auto myThread = std::thread([&netMan, &jobMan]() {
-        while(true) {
+    auto myThread = std::thread([&isRunning, &netMan, &jobMan]() {
+        while(isRunning) {
             netMan.execute();
             jobMan.execute();
+
+            Sleep(200);
         }
     });
 
@@ -135,6 +159,11 @@ int main(int argc, char **argv) {
         std::string jobName;
         std::string data;
 
+        std::string targetNode;
+
+        std::cout << "target node: ";
+        std::cin >> targetNode;
+
         std::cout << "code filename(max length 20 char): ";
         std::cin >> codeFn;
 
@@ -144,7 +173,7 @@ int main(int argc, char **argv) {
         std::cout << "data filename: ";
         std::cin >> data;
 
-        jobMan.createJob("example_dll.dll", "data.dat", "hello", "127.0.0.1");
+        jobMan.createJob("example_dll.dll", "data.dat", "hello", targetNode.c_str());
     }});
 
     primary_actions.insert({2, [&netMan]() {
@@ -154,15 +183,21 @@ int main(int argc, char **argv) {
 
         std::cin >> nodeName;
 
-        netMan.connectToNode("localhost", DEFAULT_PORT);
+        netMan.connectToNode(nodeName.c_str(), DEFAULT_PORT);
 
     }});
 
     primary_actions.insert({1, [&netMan]() {
 
-        netMan.createServer(DEFAULT_PORT);
+        std::string ip;
+        std::cout << "Please enter server ip: " << std::endl;
+        std::cin >> ip;
+
+        netMan.createServer(ip, DEFAULT_PORT);
 
     }});
+
+    primary_actions.insert({6, []{}});
 
     int op = 0;
 
@@ -181,7 +216,13 @@ int main(int argc, char **argv) {
 
     }
 
+    isRunning = false;
+
+    myThread.join();
+
     WSACleanup();
+
+
 
    return 0;
 }

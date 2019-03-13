@@ -79,7 +79,7 @@ public:
 	bool write(std::string nodeName, Buffer& buff);
 	bool read(std::string nodeName, Buffer& buff);
 	
-	bool createServer(const char* port);
+	bool createServer(std::string ip,const char* port);
 	bool acceptConnection();
 	
 	void execute();

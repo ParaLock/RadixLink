@@ -59,7 +59,10 @@ public:
 
     void start() {
 
-        m_executionThread = std::thread([this]() { this->execute();});
+        m_executionThread = std::thread([this]() { 
+            
+            this->execute();
+        });
     }
 
     void stop() {

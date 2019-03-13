@@ -21,6 +21,18 @@ public:
             
             std::cout << "JobManager: new resource received: " << resources[i].type << std::endl;
 
+            if(resources[i].type == RESOURCE_TYPE_RESULT) {
+
+                auto itr = m_currentOutgoingJobs.find(resources[i].jobID);
+
+                if(itr != m_currentOutgoingJobs.end()) {
+
+                    itr->second.addResource(resources[i]);
+
+                    continue;
+                }
+            }
+
             auto itr = m_currentIncomingJobs.find(resources[i].jobID);
 
             if(itr == m_currentIncomingJobs.end()) {
@@ -28,6 +40,7 @@ public:
                 std::cout << "JobManager: Creating new Job: " << resources[i].jobID << std::endl;
 
                 Job job;
+                job._isRemoteInstance = true;
 
                 m_currentIncomingJobs.insert({resources[i].jobID, job});
             }
@@ -42,15 +55,14 @@ public:
 
         for (auto it = m_currentIncomingJobs.begin(); it != m_currentIncomingJobs.end(); it++ ) {
             
-            //std::cout << "HAS JOB: " << it->second._hasJob << std::endl;
-            //std::cout << "HAS DATA: " << it->second._hasData << std::endl;
-            //std::cout << "HAS CODE: " << it->second._hasCode << std::endl;
-
             if(!it->second.isComplete()) {
 
                 it->second.execute();
 
-                //putResources(it->second.getResults());
+                std::vector<Resource> temp;
+                temp.push_back(it->second.getResult());
+
+                putResources(temp);
             }
         }
 
@@ -74,6 +86,8 @@ public:
         std::cout << "Creating job: " << jobID << std::endl;
 
         Job newJob;
+        newJob._isRemoteInstance = false;
+
         JobInfo info;
 
         strcpy(info.jobName, jobName.c_str());
@@ -81,6 +95,7 @@ public:
         Resource code_resource;
         Resource data_resource;
         Resource job_resource;
+        Resource result_resource;
 
         job_resource.type          = RESOURCE_TYPE_JOB;
         job_resource.jobID         = jobID;
@@ -90,6 +105,7 @@ public:
         strcpy(job_resource.target, nodeName.c_str());
         strcpy(data_resource.target, nodeName.c_str());
         strcpy(code_resource.target, nodeName.c_str());
+        strcpy(result_resource.target, nodeName.c_str());
 
         Encoder::run(codeFn, code_resource.buff);
 
@@ -102,6 +118,10 @@ public:
         data_resource.jobID         = jobID;
         data_resource.destManager   = "net_manager";
 
+        result_resource.type        = RESOURCE_TYPE_RESULT;
+        result_resource.jobID = jobID;
+        result_resource.destManager = "net_manager";
+
         Encoder::run(dataFn, data_resource.buff);
 
         m_currentOutgoingJobs.insert({jobID, newJob});
@@ -111,7 +131,7 @@ public:
         temp.push_back(job_resource);
         temp.push_back(data_resource);
         temp.push_back(code_resource);
-
+        temp.push_back(result_resource);
 
         putResources(temp);
 

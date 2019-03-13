@@ -161,7 +161,7 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 	return true;
 }
 
-bool NetworkManager::createServer(const char* port) {
+bool NetworkManager::createServer(std::string ip, const char* port) {
 
     struct addrinfo *result = NULL;
     struct addrinfo hints;
@@ -203,18 +203,18 @@ bool NetworkManager::createServer(const char* port) {
 
     freeaddrinfo(result);
 	
-    SOCKADDR_IN client_info = {0};
-    int addrsize = sizeof(client_info);
+    // SOCKADDR_IN client_info = {0};
+    // int addrsize = sizeof(client_info);
 
-    // or get it from the socket itself at any time
-    int client_info_size = sizeof(client_info);
-    getpeername(m_listenSocket, (sockaddr*)&client_info, &client_info_size);
+    // // or get it from the socket itself at any time
+    // int client_info_size = sizeof(client_info);
+    // getpeername(m_listenSocket, (sockaddr*)&client_info, &client_info_size);
 
-    char *ip = inet_ntoa(client_info.sin_addr);
+    // char *ip = inet_ntoa(client_info.sin_addr);
 
-    m_name = std::string(ip);
+    m_name = ip;
 
-    std::cout << "NetManager: Server created -> IP: " << m_name << std::endl;
+    std::cout << "NetManager: Server created -> IP: " << ip << std::endl;
 
     m_serverCreated = true;
 
@@ -297,7 +297,6 @@ void NetworkManager::execute() {
         std::cout << "NetManager: writing resource over network: " << res[i].type << std::endl;
     }
 
-    //std::map<std::string, Buffer>      targeted;
     std::vector<Buffer>      targeted;
     std::vector<std::string> targets;
 
@@ -312,20 +311,7 @@ void NetworkManager::execute() {
             general.push_back(res[i]);
 
         } else {
-            
-            //auto itr = targeted.find(res[i].target);
 
-            //if(itr == targeted.end()) {
-
-              //  targeted.insert({res[i].target, Buffer()});
-           //}
-
-            //Buffer& buff = targeted.at(res[i].target);
-
-            //strcpy(res[i].target, m_name.c_str());
-
-            //m_encoder.run(buff, res[i]);
-        
             Buffer buff;
             targeted.push_back(buff);
 
@@ -347,13 +333,6 @@ void NetworkManager::execute() {
 
         }
     }
-
-    // for (auto it = targeted.begin(); it != targeted.end(); it++ ) {
-            
-    //     std::cout << "NetManager: sending targeted resources to " << it->first << std::endl;
-
-    //     write(it->first, it->second); 
-    // }
 
     for(int i = 0; i < targeted.size(); i++) {
         
