@@ -16,7 +16,7 @@ __stdcall void combine(std::vector<Buffer>& results, Buffer& finalResult)
 
     for(int i = 0; i < results.size(); i++) {
             
-        sum += *(unsigned long long*)results[i].buff.getBase();
+        sum += *(unsigned long long*)results[i].getBase();
         
     }
 
