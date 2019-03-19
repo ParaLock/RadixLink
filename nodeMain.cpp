@@ -174,17 +174,17 @@ int main(int argc, char **argv) {
     NetworkManager netMan(dispatcher, decoder, encoder);
     JobManager     jobMan(dispatcher, segmenter);
 
-    bool isRunning = true;
+    //bool isRunning = true;
 
 
-    auto myThread = std::thread([&isRunning, &netMan, &jobMan]() {
-        while(isRunning) {
-            netMan.execute();
-            jobMan.execute();
+    // auto myThread = std::thread([&isRunning, &netMan, &jobMan]() {
+    //     while(isRunning) {
+    //         netMan.execute();
+    //         jobMan.execute();
 
-            Sleep(200);
-        }
-    });
+    //         Sleep(200);
+    //     }
+    // });
 
     std::map<int, std::function<void()>> primary_actions;
 
@@ -239,7 +239,7 @@ int main(int argc, char **argv) {
 
         //First ip address is always "this" node...
         netMan.createServer(ipList[0], DEFAULT_PORT);
-
+    
         for(int i = 1; i < ipList.size(); i++) {
 
             if(!netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT)) {
@@ -252,6 +252,9 @@ int main(int argc, char **argv) {
     }});
 
     primary_actions.insert({8, []{}});
+
+    netMan.start();
+    jobMan.start();
 
     int op = 0;
 
@@ -275,9 +278,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    isRunning = false;
-
-    myThread.join();
+    netMan.stop();
+    jobMan.stop();
 
     WSACleanup();
 

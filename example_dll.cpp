@@ -5,9 +5,22 @@ __stdcall void run(char *s, size_t size, Buffer& result)
 {
     printf("Counting....\n");
 
-    unsigned long long magic = 42;
+    unsigned long long start = *(unsigned long long*)s;
+    unsigned long long end   = *(unsigned long long*)(s + sizeof(unsigned long long));
 
-    result.write((char*)&magic, sizeof(magic));
+    printf("start: %d\n", start);
+    printf("end: %d\n", end);
+
+    unsigned long long sum = start;
+
+    for(int i = start; i < end; i++) {
+
+        sum += i;
+    }
+
+    printf("sum: %d\n", sum);
+
+    result.write((char*)&sum, sizeof(sum));
 }
 
 __stdcall void combine(std::vector<Buffer>& results, Buffer& finalResult)

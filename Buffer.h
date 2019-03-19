@@ -40,6 +40,11 @@ struct Buffer {
 		return &data[0];
 	}
 	
+	void resize(size_t num) {
+
+		data.resize(num);
+	}
+
 	char* getCurrentOffset() {
 	
 		return &data[0] + data.size();

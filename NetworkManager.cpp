@@ -44,20 +44,16 @@ bool NetworkManager::connectToNode(const char* target, const char* port) {
         break;
     }
 
-    if(iResult == WSAEHOSTUNREACH) {
-        
+    freeaddrinfo(result);
+
+    if (ConnectSocket == INVALID_SOCKET) {
+
         std::cout << "NetManager: host unreachable..." << std::endl;
 
         m_pendingConnections.push_back(std::string(target));
 
         closesocket(ConnectSocket);
-        ConnectSocket = INVALID_SOCKET;
-        return false;
-    }
 
-    freeaddrinfo(result);
-
-    if (ConnectSocket == INVALID_SOCKET) {
         printf("Unable to connect to server!\n %ld\n", WSAGetLastError());
         return false;
     }
@@ -120,6 +116,7 @@ bool NetworkManager::write(std::string nodeName, Buffer& buff) {
 
         iResult = send(ConnectSocket, buff.getBase() + bytesSent, size - bytesSent, 0);
         bytesSent += iResult;
+
     } while(bytesSent < size);
 	
     printf("Bytes sent: %ld\n", bytesSent);
@@ -159,11 +156,7 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 
     std::cout << "NetManager: Incoming buffer size: " << size << std::endl;
 	
-    for(int i = 0; i < size; i++) {
-        char junk = 'f';
-
-        buff.write(&junk, sizeof(char));
-    }
+    buff.resize(size);
 
     // Receive until the peer shuts down the connection
    do {

@@ -15,11 +15,13 @@ private:
     std::vector<Resource> m_resourceQueue;
 
     std::string           m_name;
+    bool                  m_isRunning;
 public:
 
     Manager(IDispatcher& dispatcher, std::string name) : m_dispatcher(dispatcher) {
 
         m_name = name;
+        m_isRunning = false;
 
         m_dispatcher.registerManager(m_name, this);
     }
@@ -59,14 +61,22 @@ public:
 
     void start() {
 
+        m_isRunning = true;
+
         m_executionThread = std::thread([this]() { 
             
-            this->execute();
+            while(this->m_isRunning) {
+
+                this->execute();
+
+                Sleep(200);
+            }
         });
     }
 
     void stop() {
 
+        m_isRunning = false;
         m_executionThread.join();
     }
 };
