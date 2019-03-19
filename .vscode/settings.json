@@ -41,6 +41,9 @@
         "cstddef": "cpp",
         "cstring": "cpp",
         "numeric": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "atomic": "cpp",
+        "deque": "cpp",
+        "list": "cpp"
     }
 }

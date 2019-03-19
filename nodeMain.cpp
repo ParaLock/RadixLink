@@ -4,6 +4,8 @@
 
 #include "NetworkManager.h"
 #include "JobManager.h"
+#include "DataSegmenter.h"
+#include "ConfigLoader.h"
 
 #include <iostream>
 
@@ -22,8 +24,10 @@ int main(int argc, char **argv) {
     }
 
     srand(time(NULL));
+
     Encoder encoder;
     Decoder decoder;
+    DataSegmenter segmenter;
 
     decoder.registerHandler(RESOURCE_TYPE_CODE, [](EncoderHeader* header, char* payload, Resource& resource) {
 
@@ -63,16 +67,17 @@ int main(int argc, char **argv) {
     decoder.registerHandler(RESOURCE_TYPE_RESULT, [](EncoderHeader* header, char* payload, Resource& resource) {
 
         std::cout << "Decoder: Result section detected!" << " payload size: " << header->payloadSize << std::endl;
-
-        size_t targetOffset = header->payloadSize - sizeof(resource.target);
-
-        resource.buff.write(payload, targetOffset);
         
+        char* temp = payload;
+
         for(int i = 0; i < sizeof(resource.target); i++) {
   
-            resource.target[i] = (char)(payload + targetOffset)[i];
+            resource.target[i] = (char)payload[i];
+            temp++;
         }
 
+        resource.buff.write(temp, header->payloadSize - sizeof(resource.target));
+        
         resource.destManager = "job_manager";
     });
 
@@ -121,7 +126,7 @@ int main(int argc, char **argv) {
 
     encoder.registerHandler(RESOURCE_TYPE_RESULT, [](Buffer& buff, Resource& resource) {
 
-        std::cout << "Encoder: Result section detected!" << " payload size: " << resource.buff.getSize() << std::endl;
+        std::cout << "Encoder: Result section detected!" << " payload size: " << resource.buff.getSize() + sizeof(resource.target) << std::endl;
 
         EncoderHeader header;
         header.type         = resource.type;
@@ -129,15 +134,45 @@ int main(int argc, char **argv) {
         header.jobID        = resource.jobID;
 
         buff.write((char*)&header, sizeof(EncoderHeader));
-        buff.write(resource.buff.getBase(), resource.buff.getSize());
         buff.write((char*)&resource.target, sizeof(resource.target));
+        buff.write(resource.buff.getBase(), resource.buff.getSize());
 
     });
+
+
+    segmenter.registerHandler("dat", [](Buffer& input, std::vector<Buffer>& segments) {
+
+        std::string str = std::string(input.getBase());
+
+        std::vector<std::string> nums = split(str, '-');
+
+        int count = 0;
+
+        segments.push_back(Buffer());
+
+        for(int i = 0; i < nums.size(); i++) {
+            
+            Buffer& buff = segments.back();
+
+            unsigned long long data = std::stoull(nums[i]);
+            buff.write((char*)&data, sizeof(unsigned long long));
+
+            if(count == 2) {
+
+                segments.push_back(Buffer());
+
+                count = 0;
+            }
+
+            count++;
+        }
+    });
+
 
     Dispatcher dispatcher;
 
     NetworkManager netMan(dispatcher, decoder, encoder);
-    JobManager     jobMan(dispatcher);
+    JobManager     jobMan(dispatcher, segmenter);
 
     bool isRunning = true;
 
@@ -153,7 +188,7 @@ int main(int argc, char **argv) {
 
     std::map<int, std::function<void()>> primary_actions;
 
-    primary_actions.insert({3, [&jobMan]() {
+    primary_actions.insert({1, [&jobMan, &netMan]() {
 
         std::string codeFn;
         std::string jobName;
@@ -170,34 +205,13 @@ int main(int argc, char **argv) {
         std::cout << "job name(max length 20 char): ";
         std::cin >> jobName;
 
-        std::cout << "data filename: ";
+        std::cout << "data file: ";
         std::cin >> data;
 
-        jobMan.createJob("example_dll.dll", "data.dat", "hello", targetNode.c_str());
+        jobMan.createJob("example_dll.dll", "data.dat", "run", netMan.getActiveNodes());
     }});
 
-    primary_actions.insert({2, [&netMan]() {
-
-        std::cout << "Please enter node name: " << std::endl;
-        std::string nodeName = ""; 
-
-        std::cin >> nodeName;
-
-        netMan.connectToNode(nodeName.c_str(), DEFAULT_PORT);
-
-    }});
-
-    primary_actions.insert({1, [&netMan]() {
-
-        std::string ip;
-        std::cout << "Please enter server ip: " << std::endl;
-        std::cin >> ip;
-
-        netMan.createServer(ip, DEFAULT_PORT);
-
-    }});
-
-    primary_actions.insert({6, [&jobMan]{
+    primary_actions.insert({4, [&jobMan]{
         
         int jobID = -1;
 
@@ -207,24 +221,60 @@ int main(int argc, char **argv) {
         jobMan.printJobResults(jobID);
     }});
 
-    primary_actions.insert({7, []{}});
+    primary_actions.insert({5, [&jobMan, &netMan]{
+
+        std::string fn;
+
+        std::cout << "Config file name: ";
+        std::cin >> fn;
+
+
+        ConfigLoader conf(fn);
+
+        std::vector<std::string> ipList;
+        conf.getList("IPs", ipList);
+
+        std::string policy;
+        conf.getScaler("policy", policy);
+
+        if(policy != "client_only") {
+
+            //First ip address is always "this" node...
+            netMan.createServer(ipList[0], DEFAULT_PORT);
+            
+        } else {
+        
+            for(int i = 1; i < ipList.size(); i++) {
+
+                netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT);
+            }
+
+        }
+
+    }});
+
+    primary_actions.insert({8, []{}});
 
     int op = 0;
 
     while(op < 7) {
     
-        std::cout << "1) Enable This Node" << std::endl;
-        std::cout << "2) Connect to Node" << std::endl;
-        std::cout << "3) Create Job" << std::endl;
-        std::cout << "4) See Current Outgoing Jobs" << std::endl;
-        std::cout << "5) See Current Incoming Jobs" << std::endl;
-        std::cout << "6) To View Job Result" << std::endl;
-        std::cout << "7) Exit" << std::endl;
+        std::cout << "1) Create Job" << std::endl;
+        std::cout << "2) See Current Outgoing Jobs" << std::endl;
+        std::cout << "3) See Current Incoming Jobs" << std::endl;
+        std::cout << "4) View Job Result" << std::endl;
+        std::cout << "5) Load Configuration" << std::endl;
+        std::cout << "6) Exit" << std::endl;
     
         std::cin >> op;
 
-        primary_actions.at(op)();
+        auto itr = primary_actions.find(op);
 
+        if(itr != primary_actions.end()) {
+           
+            primary_actions.at(op)();
+
+        }
     }
 
     isRunning = false;

@@ -1,13 +1,19 @@
 #include "Manager.h"
 #include "Job.h"
+#include "DataSegmenter.h"
+#include "Utils.h"
 
 class JobManager : public Manager<JobManager> {
 private:
 	std::map<int, Job> m_currentIncomingJobs;
     std::map<int, Job> m_currentOutgoingJobs;
+    DataSegmenter&     m_segmentor;
 public:
 
-	JobManager(IDispatcher& dispatcher) : Manager(dispatcher, "job_manager") {
+	JobManager(IDispatcher& dispatcher, DataSegmenter& segmentor) 
+        : Manager(dispatcher, "job_manager"),
+          m_segmentor(segmentor) 
+    {
 
     }
 
@@ -26,7 +32,8 @@ public:
                 auto itr = m_currentOutgoingJobs.find(resources[i].jobID);
 
                 if(itr != m_currentOutgoingJobs.end()) {
-
+                    
+                    resources[i].destManager = "net_manager";
                     itr->second.addResource(resources[i]);
 
                     continue;
@@ -55,7 +62,7 @@ public:
 
         for (auto it = m_currentIncomingJobs.begin(); it != m_currentIncomingJobs.end(); it++ ) {
             
-            if(!it->second.isComplete()) {
+            if(it->second.isRunnable() && !it->second.isComplete()) {
 
                 it->second.execute();
 
@@ -90,7 +97,7 @@ public:
         }
     }
 
-    void createJob(std::string codeFn, std::string dataFn, std::string jobName, std::string nodeName) {
+    void createJob(std::string codeFn, std::string dataFn, std::string jobName, std::vector<std::string> availableNodes) {
 
         int jobID = rand();
 
@@ -100,52 +107,72 @@ public:
         newJob.id = jobID;
         newJob._isRemoteInstance = false;
 
-        JobInfo info;
+        std::vector<Buffer> segments;
 
-        strcpy(info.jobName, jobName.c_str());
- 
-        Resource code_resource;
-        Resource data_resource;
-        Resource job_resource;
-        Resource result_resource;
+        std::cout << "JobManager: segmenting data..." << std::endl;
 
-        job_resource.type          = RESOURCE_TYPE_JOB;
-        job_resource.jobID         = jobID;
-        job_resource.info          = info;
-        job_resource.destManager   = "net_manager";
+        m_segmentor.run(dataFn, split(dataFn, '.')[1], segments);
 
-        strcpy(job_resource.target, nodeName.c_str());
-        strcpy(data_resource.target, nodeName.c_str());
-        strcpy(code_resource.target, nodeName.c_str());
-        strcpy(result_resource.target, nodeName.c_str());
+        std::cout << "JobManager: num segments: " << segments.size() << std::endl;
 
-        Encoder::run(codeFn, code_resource.buff);
+        if(availableNodes.size() < segments.size()) {
+            
+            std::cout << "JobManager: Not enough nodes to process entire job..." << std::endl;
 
-        code_resource.type          = RESOURCE_TYPE_CODE;
-        code_resource.jobID         = jobID;
-        code_resource.codeFn        = std::to_string(jobID) + std::string(".dll");
-        code_resource.destManager   = "net_manager";
-
-        data_resource.type          = RESOURCE_TYPE_DATA;
-        data_resource.jobID         = jobID;
-        data_resource.destManager   = "net_manager";
-
-        result_resource.type        = RESOURCE_TYPE_RESULT;
-        result_resource.jobID = jobID;
-        result_resource.destManager = "net_manager";
-
-        Encoder::run(dataFn, data_resource.buff);
+            return;
+        }
 
         m_currentOutgoingJobs.insert({jobID, newJob});
 
-        std::vector<Resource> temp;
-        
-        temp.push_back(job_resource);
-        temp.push_back(data_resource);
-        temp.push_back(code_resource);
-        temp.push_back(result_resource);
+        for(int i = 0; i < segments.size(); i++) {
 
-        putResources(temp);
+            JobInfo info;
+
+            strcpy(info.jobName, jobName.c_str());
+    
+            Resource code_resource;
+            Resource data_resource;
+            Resource job_resource;
+            Resource result_resource;
+
+            job_resource.type          = RESOURCE_TYPE_JOB;
+            job_resource.jobID         = jobID;
+            job_resource.info          = info;
+            job_resource.destManager   = "net_manager";
+
+            strcpy(job_resource.target, availableNodes[i].c_str());
+            strcpy(data_resource.target, availableNodes[i].c_str());
+            strcpy(code_resource.target, availableNodes[i].c_str());
+            strcpy(result_resource.target, availableNodes[i].c_str());
+
+            Encoder::run(codeFn, code_resource.buff);
+
+            code_resource.type          = RESOURCE_TYPE_CODE;
+            code_resource.jobID         = jobID;
+            code_resource.codeFn        = std::to_string(jobID) + std::string(".dll");
+            code_resource.destManager   = "net_manager";
+
+            data_resource.type          = RESOURCE_TYPE_DATA;
+            data_resource.jobID         = jobID;
+            data_resource.destManager   = "net_manager";
+
+            result_resource.type        = RESOURCE_TYPE_RESULT;
+            result_resource.jobID = jobID;
+            result_resource.destManager = "net_manager";
+
+            data_resource.buff = segments[i];
+
+            std::vector<Resource> temp;
+            
+            temp.push_back(job_resource);
+            temp.push_back(data_resource);
+            temp.push_back(code_resource);
+            temp.push_back(result_resource);
+
+            putResources(temp);
+
+            std::cout << "JobManager: Job segment created for " << availableNodes[i] << std::endl;
+        }
 
         std::cout << "JobManager: Finished creating job" << std::endl;
     }

@@ -13,7 +13,8 @@ extern "C" {
 #define EXAMPLE_DLL __declspec(dllimport)
 #endif
 
-void __stdcall EXAMPLE_DLL hello(char *s, size_t size, Buffer& buff);
+void __stdcall EXAMPLE_DLL run(char *s, size_t size, Buffer& buff);
+void __stdcall EXAMPLE_DLL combine(std::vector<Buffer>& results, Buffer& finalResult);
 
 int EXAMPLE_DLL Double(int x);
 

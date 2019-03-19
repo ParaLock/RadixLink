@@ -34,6 +34,7 @@ class NetworkManager : public Manager<NetworkManager> {
 private:
 
 	std::map<std::string, SOCKET> m_connections;
+	std::vector<std::string>	  m_pendingConnections;
 
 	SOCKET  					  m_listenSocket;
 	
@@ -72,6 +73,8 @@ public:
 
 		m_conListener = std::thread(&NetworkManager::acceptConnection, this);
 	}
+
+	std::vector<std::string>& getActiveNodes();
 
 	bool connectToNode(const char* target, const char* port);
 	bool disconnect(std::string nodeName);

@@ -38,8 +38,6 @@ struct Decoder {
 							
 			resources.push_back(std::move(jobRes));
 
-			std::cout << "Decoder: Cycle Complete!" << std::endl; 
-			
 			size  -= sizeof(EncoderHeader) + header->payloadSize;
 			header = (EncoderHeader*)(payload + header->payloadSize);
 			

@@ -34,6 +34,17 @@ bool NetworkManager::connectToNode(const char* target, const char* port) {
 
         // Connect to server.
         iResult = connect( ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+
+        if(iResult == WSAEHOSTUNREACH) {
+            
+            std::cout << "NetManager: host unreachable..." << std::endl;
+
+            m_pendingConnections.push_back(std::string(target));
+
+            closesocket(ConnectSocket);
+            ConnectSocket = INVALID_SOCKET;
+            break;
+        }
         if (iResult == SOCKET_ERROR) {
             closesocket(ConnectSocket);
             ConnectSocket = INVALID_SOCKET;
@@ -109,6 +120,9 @@ bool NetworkManager::write(std::string nodeName, Buffer& buff) {
         bytesSent += iResult;
     } while(bytesSent < size);
 	
+    printf("Bytes sent: %ld\n", bytesSent);
+	
+
 	return true;
 }
 
@@ -269,7 +283,23 @@ bool NetworkManager::acceptConnection() {
 	return true;
 }
 
+std::vector<std::string>& NetworkManager::getActiveNodes() {
+    return m_activeConnections;
+}
+
 void NetworkManager::execute() {
+
+    for(int i = 0; i < m_pendingConnections.size(); i++) {
+
+        if(connectToNode(m_pendingConnections[i].c_str(), DEFAULT_PORT)) {
+
+            std::cout << "NetManager: Attempting connection to node: " << m_pendingConnections[i] << std::endl;
+            
+            m_activeConnections.push_back(m_pendingConnections[i]);
+
+            m_pendingConnections.erase(m_pendingConnections.begin() + i);
+        }
+    }
 
 	for(int i = 0; i < m_activeConnections.size(); i++) {
 
