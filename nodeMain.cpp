@@ -241,15 +241,14 @@ int main(int argc, char **argv) {
 
             //First ip address is always "this" node...
             netMan.createServer(ipList[0], DEFAULT_PORT);
-            
-        } else {
-        
-            for(int i = 1; i < ipList.size(); i++) {
 
-                netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT);
-            }
+        } 
+        for(int i = 1; i < ipList.size(); i++) {
 
+            netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT);
         }
+
+        
 
     }});
 
