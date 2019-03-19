@@ -237,15 +237,14 @@ int main(int argc, char **argv) {
         std::string policy;
         conf.getScaler("policy", policy);
 
-        if(policy != "client_only") {
+        //First ip address is always "this" node...
+        netMan.createServer(ipList[0], DEFAULT_PORT);
 
-            //First ip address is always "this" node...
-            netMan.createServer(ipList[0], DEFAULT_PORT);
-
-        } 
         for(int i = 1; i < ipList.size(); i++) {
 
-            netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT);
+            if(!netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT)) {
+                std::cout << "Adding pending connection..." << std::endl;
+            }
         }
 
         

@@ -33,6 +33,10 @@ struct Buffer {
 	
 	char * getBase() {
 		
+		if(data.size() == 0) {
+			return nullptr;
+		}
+
 		return &data[0];
 	}
 	

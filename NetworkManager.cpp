@@ -35,22 +35,24 @@ bool NetworkManager::connectToNode(const char* target, const char* port) {
         // Connect to server.
         iResult = connect( ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
 
-        if(iResult == WSAEHOSTUNREACH) {
-            
-            std::cout << "NetManager: host unreachable..." << std::endl;
 
-            m_pendingConnections.push_back(std::string(target));
-
-            closesocket(ConnectSocket);
-            ConnectSocket = INVALID_SOCKET;
-            break;
-        }
         if (iResult == SOCKET_ERROR) {
             closesocket(ConnectSocket);
             ConnectSocket = INVALID_SOCKET;
             continue;
         }
         break;
+    }
+
+    if(iResult == WSAEHOSTUNREACH) {
+        
+        std::cout << "NetManager: host unreachable..." << std::endl;
+
+        m_pendingConnections.push_back(std::string(target));
+
+        closesocket(ConnectSocket);
+        ConnectSocket = INVALID_SOCKET;
+        return false;
     }
 
     freeaddrinfo(result);

@@ -19,6 +19,8 @@ struct Decoder {
 
 	bool run(Buffer& buff, std::vector<Resource>& resources) {
 		
+		if(buff.getSize() == 0) return true;
+
 		size_t size = buff.getSize(); 
 		
 		EncoderHeader* header = (EncoderHeader*)buff.getBase();

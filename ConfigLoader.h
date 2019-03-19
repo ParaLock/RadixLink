@@ -43,13 +43,13 @@ public:
                         std::string              key    = line.substr(1, std::string::npos);
                         std::vector<std::string> keyVal = split(key, ' ');
 
-                        if(keyVal[1] != "") {
+                        if(keyVal.size() == 2) {
                             
                             m_scalers.insert({keyVal[0], keyVal[1]});
 
                             continue;
 
-                        } else if(keyVal[1] == ""){
+                        } else if(keyVal.size() == 1){
 
                             isList = true;
                             listKey    = keyVal[0];
