@@ -71,7 +71,6 @@ void NetworkManager::processConnection(std::string target, std::string port) {
 
         std::string tempTarget = target;
         std::string tempPort   = port;
-                    std::cout << "runnin restart" << std::endl;
 
         m_workQueue.addTask(Task(
                 "net_connection_thread",
@@ -385,7 +384,7 @@ void NetworkManager::execute() {
 
         Sleep(200);
         m_workQueue.addTask(Task(
-			"net_main_thread",
+			m_worker,
 			std::bind(&NetworkManager::execute, this)
 		));
     }

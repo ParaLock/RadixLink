@@ -23,6 +23,8 @@ private:
 protected:
 
     TaskQueue&            m_workQueue;
+    std::string			  m_worker;
+
 
 
 public:
@@ -35,17 +37,34 @@ public:
         m_name = name;
         m_isRunning = true;
 
+        m_worker = name + "_main_thread";
+
         m_dispatcher.registerManager(m_name, this);
     }
 
     void addResources(std::vector<Resource>& resources) {
 
         m_resourceQueue.insert(m_resourceQueue.end(), resources.begin(), resources.end());
+
+        if(isRunning()) {
+
+            m_workQueue.addTask(Task(
+                m_worker,
+                std::bind(&Manager<T>::execute, this)
+            ));
+        }
     }
+
+    virtual void execute() = 0;
 
     void addResource(Resource& resource) {
 
         m_resourceQueue.push_back(std::move(resource));
+
+        m_workQueue.addTask(Task(
+            m_worker,
+            std::bind(&Manager<T>::execute, this)
+        ));
     }
 
     std::string getName() {
@@ -80,4 +99,14 @@ public:
         m_isRunning = false;
     }
 
+    void start() {
+
+        m_isRunning = true;
+
+        m_workQueue.addTask(Task(
+            m_worker,
+            std::bind(&Manager<T>::execute, this)
+        ));
+
+    }
 };

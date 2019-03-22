@@ -242,6 +242,9 @@ int main(int argc, char **argv) {
 
     }});
 
+    netMan.start();
+    jobMan.start();
+
     primary_actions.insert({8, []{}});
 
     int op = 0;

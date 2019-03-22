@@ -77,12 +77,6 @@ public:
 		m_serverCreated = false;
 		m_listening     = true;
 		m_connecting    = true;
-
-		queue.addTask(Task(
-			"net_main_thread",
-			std::bind(&NetworkManager::execute, this)
-		));
-
 		
 
 		queue.addTask(Task(

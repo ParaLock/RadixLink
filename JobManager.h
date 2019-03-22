@@ -94,14 +94,6 @@ public:
                 //std::cout << "JobManager: Job Complete: " << std::endl;
             }
         }
-
-        if(isRunning()) {
-            Sleep(200);
-            m_workQueue.addTask(Task(
-                "jobman_main_thread",
-                std::bind(&JobManager::execute, this)
-            ));
-        }
     }
 
     void printJobResults(int jobID) {
