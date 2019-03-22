@@ -27,42 +27,48 @@
 #include "Encoder.h"
 #include "IDispatcher.h"
 #include "Resource.h"
+#include "TaskQueue.h"
 
 const unsigned int MAX_BLOCK_SIZE = 512; 
 
 class NetworkManager : public Manager<NetworkManager> {
 private:
 
-	std::map<std::string, SOCKET> m_connections;
-	std::vector<std::string>	  m_pendingConnections;
+	struct Connection {
 
-	SOCKET  					  m_listenSocket;
-	
-	std::vector<std::string>      m_activeConnections;
-	
-	bool                          m_serverCreated;
-	bool 						  m_listening;
-	std::string m_name;
+		uint64_t lastActive;
+		SOCKET   socket;
+		std::string ip;
+		std::string port;
 
-	Decoder&     m_decoder;
-	Encoder&     m_encoder;
+		Connection() {
 
-	std::thread  m_conListener;
-	
-	struct Packet {
+			socket = INVALID_SOCKET;
 
-		Packet() {
-			size = 0;
 		}
-
-		size_t  size;
-		char    data[MAX_BLOCK_SIZE];
 	};
+
+	std::map<std::string, Connection> 		 		  m_connections;
+
+	std::vector<std::pair<std::string, std::string>>  m_pendingConnections;
+	std::vector<std::string>	             		  m_deadConnections;
+	std::vector<std::string>      			 		  m_activeConnections;
+	
+
+	SOCKET  					  			 		  m_listenSocket;
+
+	bool                          			 		  m_serverCreated;
+	bool 						 			 		  m_listening;
+	bool 											  m_connecting;
+	std::string 							 		  m_name;
+
+	Decoder&     						     	 	  m_decoder;
+	Encoder&     						     		  m_encoder;
 
 public:
 	
-	NetworkManager(IDispatcher& dispatcher, Decoder& decoder, Encoder& encoder) 
-		: Manager(dispatcher, "net_manager"),
+	NetworkManager(IDispatcher& dispatcher, TaskQueue& queue, Decoder& decoder, Encoder& encoder) 
+		: Manager(dispatcher, queue, "net_manager"),
 		  m_decoder(decoder),
 		  m_encoder(encoder)
 		  
@@ -70,8 +76,19 @@ public:
 		m_listenSocket = INVALID_SOCKET;
 		m_serverCreated = false;
 		m_listening     = true;
+		m_connecting    = true;
 
-		m_conListener = std::thread(&NetworkManager::acceptConnection, this);
+		queue.addTask(Task(
+			"net_main_thread",
+			std::bind(&NetworkManager::execute, this)
+		));
+
+		
+
+		queue.addTask(Task(
+			"net_listen_thread",
+			std::bind(&NetworkManager::acceptConnection, this)
+		));
 	}
 
 	std::vector<std::string>& getActiveNodes();
@@ -79,11 +96,13 @@ public:
 	bool connectToNode(const char* target, const char* port);
 	bool disconnect(std::string nodeName);
 	
+	void processConnection(std::string target, std::string port);
+
 	bool write(std::string nodeName, Buffer& buff);
 	bool read(std::string nodeName, Buffer& buff);
 	
 	bool createServer(std::string ip,const char* port);
-	bool acceptConnection();
+	void acceptConnection();
 	
 	void execute();
 	

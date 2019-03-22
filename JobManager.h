@@ -10,10 +10,15 @@ private:
     DataSegmenter&     m_segmentor;
 public:
 
-	JobManager(IDispatcher& dispatcher, DataSegmenter& segmentor) 
-        : Manager(dispatcher, "job_manager"),
+	JobManager(IDispatcher& dispatcher, TaskQueue& taskQueue, DataSegmenter& segmentor) 
+        : Manager(dispatcher, taskQueue, "job_manager"),
           m_segmentor(segmentor) 
     {
+
+        taskQueue.addTask(Task(
+			"jobman_main_thread",
+			std::bind(&JobManager::execute, this)
+        ));
 
     }
 
@@ -63,13 +68,21 @@ public:
         for (auto it = m_currentIncomingJobs.begin(); it != m_currentIncomingJobs.end(); it++ ) {
             
             if(it->second.isRunnable() && !it->second.isComplete()) {
+                
+                // m_workQueue.addTask(Task(
+                //         "job_thread",
+                //         [this, &it]() {
+
+         
+                //         }
+                // ));
 
                 it->second.execute();
 
                 std::vector<Resource> temp;
                 temp.push_back(it->second.getResult());
 
-                putResources(temp);
+                this->putResources(temp);
             }
         }
 
@@ -82,6 +95,13 @@ public:
             }
         }
 
+        if(isRunning()) {
+            Sleep(200);
+            m_workQueue.addTask(Task(
+                "jobman_main_thread",
+                std::bind(&JobManager::execute, this)
+            ));
+        }
     }
 
     void printJobResults(int jobID) {

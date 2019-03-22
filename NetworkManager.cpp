@@ -3,6 +3,28 @@
 
 bool NetworkManager::connectToNode(const char* target, const char* port) {
 
+    std::string tempTarget = target;
+    std::string tempPort       = port;
+
+    m_pendingConnections.push_back(std::make_pair(target, port));
+
+    m_workQueue.addTask(Task(
+			"net_connection_thread",
+            [tempTarget, tempPort, this]() {
+
+                this->processConnection(tempTarget, tempPort);
+            }
+	));
+    
+	return true;
+}
+
+void NetworkManager::processConnection(std::string target, std::string port) {
+
+    Connection connection;
+    connection.ip = target;
+    connection.port = port;
+
     SOCKET ConnectSocket = INVALID_SOCKET;
     struct addrinfo *result = NULL,
                     *ptr = NULL,
@@ -15,10 +37,11 @@ bool NetworkManager::connectToNode(const char* target, const char* port) {
     hints.ai_protocol = IPPROTO_TCP;
 
     // Resolve the server address and port
-    iResult = getaddrinfo(target, port, &hints, &result);
+    iResult = getaddrinfo(connection.ip.c_str(), connection.port.c_str(), &hints, &result);
+
     if ( iResult != 0 ) {
         printf("getaddrinfo failed with error: %d\n", iResult);
-        return false;
+        return;
     }
 
     // Attempt to connect to an address until one succeeds
@@ -29,7 +52,7 @@ bool NetworkManager::connectToNode(const char* target, const char* port) {
             ptr->ai_protocol);
         if (ConnectSocket == INVALID_SOCKET) {
             printf("socket failed with error: %ld\n", WSAGetLastError());
-            return false;
+            return;
         }
 
         // Connect to server.
@@ -44,48 +67,55 @@ bool NetworkManager::connectToNode(const char* target, const char* port) {
         break;
     }
 
-    freeaddrinfo(result);
+    if(ConnectSocket == SOCKET_ERROR) {
 
-    if (ConnectSocket == INVALID_SOCKET) {
+        std::string tempTarget = target;
+        std::string tempPort   = port;
+                    std::cout << "runnin restart" << std::endl;
 
-        std::cout << "NetManager: host unreachable..." << std::endl;
+        m_workQueue.addTask(Task(
+                "net_connection_thread",
+                [tempTarget, tempPort, this]() {
+                    
 
-        m_pendingConnections.push_back(std::string(target));
+                    this->processConnection(tempTarget, tempPort);
+                }
+        ));
 
-        closesocket(ConnectSocket);
-
-        printf("Unable to connect to server!\n %ld\n", WSAGetLastError());
-        return false;
+        
+        return;
     }
-	
+
+    freeaddrinfo(result);
+    
     SOCKADDR_IN client_info = {0};
     int addrsize = sizeof(client_info);
 
     int client_info_size = sizeof(client_info);
     getpeername(ConnectSocket, (sockaddr*)&client_info, &client_info_size);
     char *ip = inet_ntoa(client_info.sin_addr);
-	
+    
     std::cout << "NetworkManager: Client connected: " << std::string(ip) << std::endl;
 
     std::string name = std::string(ip);
 
-	m_connections.insert({name, ConnectSocket});
-	m_activeConnections.push_back(name);
+    connection.socket = ConnectSocket;
 
-	return true;
+    m_pendingConnections.pop_back();
+    m_connections.insert({name, connection});
+    m_activeConnections.push_back(name);
 }
-
 
 bool NetworkManager::disconnect(std::string nodeName) {
 	
-	SOCKET ConnectSocket = m_connections.at(nodeName);
+	Connection con = m_connections.at(nodeName);
 	
 	int iResult;
 	// shutdown the connection since no more data will be sent
-    iResult = shutdown(ConnectSocket, SD_SEND);
+    iResult = shutdown(con.socket, SD_SEND);
     if (iResult == SOCKET_ERROR) {
         printf("shutdown failed with error: %d\n", WSAGetLastError());
-        closesocket(ConnectSocket);
+        closesocket(con.socket);
         return false;
     }
 	
@@ -104,17 +134,17 @@ bool NetworkManager::write(std::string nodeName, Buffer& buff) {
         return false;
     }
 
-	SOCKET ConnectSocket = m_connections.at(nodeName);
+	Connection con = m_connections.at(nodeName);
 	
 	size_t size = buff.getSize();
     size_t bytesSent = 0;
     int iResult = 0;
 
-	send( ConnectSocket, (char*)&size, sizeof(size_t), 0);
+	send( con.socket, (char*)&size, sizeof(size_t), 0);
 
     do {
 
-        iResult = send(ConnectSocket, buff.getBase() + bytesSent, size - bytesSent, 0);
+        iResult = send(con.socket, buff.getBase() + bytesSent, size - bytesSent, 0);
         bytesSent += iResult;
 
     } while(bytesSent < size);
@@ -136,14 +166,14 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
         return false;
     }
 
-	SOCKET clientSocket = m_connections.at(nodeName);
+	Connection con = m_connections.at(nodeName);
 	
 	size_t bytesReceived = 0;
 	size_t size = 0;
 
     u_long readableBytes = 0;
 	
-    ioctlsocket(clientSocket, FIONREAD, &readableBytes);
+    ioctlsocket(con.socket, FIONREAD, &readableBytes);
 
     if(readableBytes == 0) {
 
@@ -152,15 +182,17 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 
     std::cout << "NetManager: Readable bytes on socket: " << readableBytes << std::endl;
 
-	recv(clientSocket, (char*)&size, sizeof(size_t), 0);
+	recv(con.socket, (char*)&size, sizeof(size_t), 0);
 
     std::cout << "NetManager: Incoming buffer size: " << size << std::endl;
 	
     buff.resize(size);
 
+ //CHECK FOR DISCONNECT: SOCKET_ERROR and WSAGetLastError() returns WSAECONNRESET
+
     // Receive until the peer shuts down the connection
    do {
-        bytesReceived += recv(clientSocket, buff.getBase() + bytesReceived, size - bytesReceived, 0);
+        bytesReceived += recv(con.socket, buff.getBase() + bytesReceived, size - bytesReceived, 0);
 		
     }  while(bytesReceived < size);
 	
@@ -212,15 +244,6 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
 
     freeaddrinfo(result);
 	
-    // SOCKADDR_IN client_info = {0};
-    // int addrsize = sizeof(client_info);
-
-    // // or get it from the socket itself at any time
-    // int client_info_size = sizeof(client_info);
-    // getpeername(m_listenSocket, (sockaddr*)&client_info, &client_info_size);
-
-    // char *ip = inet_ntoa(client_info.sin_addr);
-
     m_name = ip;
 
     std::cout << "NetManager: Server created -> IP: " << ip << std::endl;
@@ -231,10 +254,12 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
 
 }
 	
-bool NetworkManager::acceptConnection() {
+void NetworkManager::acceptConnection() {
 	
     while(m_listening) {
         
+        Connection con;
+
         SOCKADDR_IN client_info = {0};
         int addrsize = sizeof(client_info);
 
@@ -249,7 +274,7 @@ bool NetworkManager::acceptConnection() {
                 printf("listen failed with error: %d\n", WSAGetLastError());
                 closesocket(m_listenSocket);
                 WSACleanup();
-                return 1;
+                return;
             }
 
            // std::cout << "Client listen complete " << std::endl;
@@ -260,22 +285,24 @@ bool NetworkManager::acceptConnection() {
                 printf("accept failed with error: %d\n", WSAGetLastError());
                 closesocket(m_listenSocket);
                 WSACleanup();
-                return 1;
+                return;
             }
             
             char *ip = inet_ntoa(client_info.sin_addr);
+
+            con.socket = ClientSocket;
+            con.ip = ip;
+
 
             //std::cout << "NetworkManager: Client connected to server: " << std::string(ip) << std::endl;
 
             std::string name = std::string(ip);
 
             m_activeConnections.push_back(name);
-            m_connections.insert({name, ClientSocket});
+            m_connections.insert({name, con});
             
         }
     }
-
-	return true;
 }
 
 std::vector<std::string>& NetworkManager::getActiveNodes() {
@@ -283,18 +310,6 @@ std::vector<std::string>& NetworkManager::getActiveNodes() {
 }
 
 void NetworkManager::execute() {
-
-    for(int i = 0; i < m_pendingConnections.size(); i++) {
-
-        if(connectToNode(m_pendingConnections[i].c_str(), DEFAULT_PORT)) {
-
-            std::cout << "NetManager: Attempting connection to node: " << m_pendingConnections[i] << std::endl;
-            
-            m_activeConnections.push_back(m_pendingConnections[i]);
-
-            m_pendingConnections.erase(m_pendingConnections.begin() + i);
-        }
-    }
 
 	for(int i = 0; i < m_activeConnections.size(); i++) {
 
@@ -364,5 +379,14 @@ void NetworkManager::execute() {
         std::cout << "NetManager: sending targeted resource to " << targets[i] << std::endl;
 
         write(targets[i], targeted[i]);
+    }
+
+    if(isRunning()) {
+
+        Sleep(200);
+        m_workQueue.addTask(Task(
+			"net_main_thread",
+			std::bind(&NetworkManager::execute, this)
+		));
     }
 }

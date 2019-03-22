@@ -6,6 +6,7 @@
 #include "JobManager.h"
 #include "DataSegmenter.h"
 #include "ConfigLoader.h"
+#include "TaskQueue.h"
 
 #include <iostream>
 
@@ -24,6 +25,8 @@ int main(int argc, char **argv) {
     }
 
     srand(time(NULL));
+
+    TaskQueue taskQueue;
 
     Encoder encoder;
     Decoder decoder;
@@ -171,20 +174,8 @@ int main(int argc, char **argv) {
 
     Dispatcher dispatcher;
 
-    NetworkManager netMan(dispatcher, decoder, encoder);
-    JobManager     jobMan(dispatcher, segmenter);
-
-    //bool isRunning = true;
-
-
-    // auto myThread = std::thread([&isRunning, &netMan, &jobMan]() {
-    //     while(isRunning) {
-    //         netMan.execute();
-    //         jobMan.execute();
-
-    //         Sleep(200);
-    //     }
-    // });
+    NetworkManager netMan(dispatcher, taskQueue, decoder, encoder);
+    JobManager     jobMan(dispatcher, taskQueue, segmenter);
 
     std::map<int, std::function<void()>> primary_actions;
 
@@ -252,9 +243,6 @@ int main(int argc, char **argv) {
     }});
 
     primary_actions.insert({8, []{}});
-
-    netMan.start();
-    jobMan.start();
 
     int op = 0;
 

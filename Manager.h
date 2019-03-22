@@ -2,26 +2,38 @@
 
 #include "IManager.h"
 #include "Dispatcher.h"
+#include "Task.h"
+#include "TaskQueue.h"
 #include <thread>
 #include <vector>
 #include <functional>
 
+
 template<typename T>
 class Manager : public IManager{
 private:
-    std::thread m_executionThread;
     IDispatcher&  m_dispatcher;
 
     std::vector<Resource> m_resourceQueue;
 
+
     std::string           m_name;
     bool                  m_isRunning;
+
+protected:
+
+    TaskQueue&            m_workQueue;
+
+
 public:
 
-    Manager(IDispatcher& dispatcher, std::string name) : m_dispatcher(dispatcher) {
+    Manager(IDispatcher& dispatcher, TaskQueue& taskQueue, std::string name) : 
+            m_dispatcher(dispatcher), 
+            m_workQueue(taskQueue) 
+    {
 
         m_name = name;
-        m_isRunning = false;
+        m_isRunning = true;
 
         m_dispatcher.registerManager(m_name, this);
     }
@@ -59,24 +71,13 @@ public:
         m_dispatcher.dispatch(resources);
     }
 
-    void start() {
-
-        m_isRunning = true;
-
-        m_executionThread = std::thread([this]() { 
-            
-            while(this->m_isRunning) {
-
-                this->execute();
-
-                Sleep(200);
-            }
-        });
+    bool isRunning() {
+        return m_isRunning;
     }
 
     void stop() {
 
         m_isRunning = false;
-        m_executionThread.join();
     }
+
 };
