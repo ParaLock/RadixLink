@@ -13,13 +13,14 @@ const int RESOURCE_TYPE_CODE = 0;
 const int RESOURCE_TYPE_DATA = 1;
 const int RESOURCE_TYPE_JOB  = 2;
 const int RESOURCE_TYPE_RESULT = 3;
+const int RESOURCE_TYPE_STATUS = 4;
 
 struct EncoderHeader {
 	
 
-	int          type;
+	unsigned int type;
 	unsigned int jobID;
-	size_t       payloadSize;
+	unsigned int payloadSize;
 	
 };
 
@@ -27,7 +28,7 @@ struct Encoder {
 
 	std::map<int, std::function<void(Buffer&, Resource&)>> m_encoders;
 
-	void registerHandler(int type, std::function<void(Buffer&, Resource&)> handler) {
+	void registerHandler(unsigned int type, std::function<void(Buffer&, Resource&)> handler) {
 
 		m_encoders.insert({type, handler});
 	}
@@ -49,7 +50,7 @@ struct Encoder {
 		return true;
 	}
 
-	static bool run(char* src, size_t size, unsigned int jobID, int type, Buffer& buff) {
+	static bool run(char* src, unsigned int size, unsigned int jobID, unsigned int type, Buffer& buff) {
 	
 		EncoderHeader header;
 		header.type = type;

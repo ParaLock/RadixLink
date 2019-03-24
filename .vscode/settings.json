@@ -44,6 +44,9 @@
         "algorithm": "cpp",
         "atomic": "cpp",
         "deque": "cpp",
-        "list": "cpp"
+        "list": "cpp",
+        "condition_variable": "cpp",
+        "future": "cpp",
+        "mutex": "cpp"
     }
 }

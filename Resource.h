@@ -10,7 +10,7 @@ struct Resource {
 	char               	target[50];
 
 	unsigned int  		jobID;
-	int           		type;
+	unsigned int        type;
 
 	JobInfo 	info;
 	std::string codeFn;

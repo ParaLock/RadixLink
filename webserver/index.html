@@ -1,0 +1,111 @@
+<html>
+
+    <head>
+
+
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"> </script>
+
+        <style type="text/css">
+            #mynetwork {
+                width: 600px;
+                height: 400px;
+                border: 1px solid lightgray;
+            }
+        </style>
+
+        <script>
+            
+            nodeIdByIP = {};
+
+            currentlyActiveNodes = [];
+
+            function addNodes(nodes) {
+
+
+            }
+
+            function getNodeList(tokens) {
+
+
+            }
+
+            sendRequest = function (name, data) { // here the data and url are not hardcoded anymore
+
+                    return $.ajax({
+                        type: "post",
+                        url: "http://localhost:8000/",
+                        data: name + "-" + data,
+                        dataType: "text",
+                        contentType: "charset=utf-8",
+                        success: function(data) {
+                            
+                            var tokens = data.split('-');
+
+                            console.log("TEST");
+
+                            if(tokens[0] == "active_node_list") {
+
+                                var ips = getNodeList(tokens);
+
+                                for(var i = 0; i < ips.length; i++) {
+
+                                    if(!nodeIdByIP.hasOwnProperty(ips[i])) {
+
+                                        var id = Math.random();
+                                        
+                                        var myId = nodeIdByIP["127.0.0.1"];
+
+                                        nodes.add([{id: id, label: ips[i], first: false }]);
+                                        edges.add([{from: myId, to: id}]);
+
+                                        nodeIdByIP[ips[i]] = id;
+                                    }
+                                }
+                            }
+
+                        }.bind(this),
+                        error: function(a, b, c) {
+
+                        }
+                    });
+            }
+            
+            window.onload = function() {
+
+                nodes = new vis.DataSet([]);
+                edges = new vis.DataSet([]);
+
+                container = document.getElementById('mynetwork');
+                
+                data = {
+                    nodes: nodes,
+                    edges: edges
+                };
+                options = {};
+                network = new vis.Network(container, data, options);
+
+                var thisNode = Math.random();
+
+                nodes.add([{id: thisNode, label: '127.0.0.1', first: true }]);
+
+                nodeIdByIP["127.0.0.1"] = thisNode;
+
+            };
+
+
+        </script>
+
+    </head>
+
+    <body>
+
+        <div id="mynetwork"></div>
+
+        <button onclick='sendRequest("get_active_nodes", "a-b-c")'> Send Request </button>
+
+    </body>
+
+
+</html>

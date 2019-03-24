@@ -9,12 +9,14 @@
 struct Job {
 	
 	typedef void (*FUNC)(char *, size_t, Buffer& out);
+    typedef void (*CombineFunc)(std::vector<Buffer*>& results, Buffer& finalResult);
 
 	std::map<int, Resource>    m_resources;
 	std::vector<Resource>      m_results;
 
+	std::string 			   m_codeFn;
 	Resource 				   m_result;
-
+	int						   m_numSegments;
 	int id;
 
 	bool        _isComplete;
@@ -50,7 +52,7 @@ struct Job {
 			if(_isRemoteInstance) {
 
 				m_result = resource;
-				
+
 				_hasResult = true;
 
 			} else {
@@ -130,6 +132,41 @@ struct Job {
 
 		return true;
 	}
+
+	bool combineResults() {
+
+
+		if(isRunnable() && getNumSegments() == getNumResults()) {
+			
+			HMODULE dllHandle = LoadLibraryA(m_codeFn.c_str());
+
+			if(dllHandle == NULL) {
+				
+				std::cout << "Job: failed to load code... Error: " << GetLastError() << std::endl;
+				return false;
+			}
+
+			CombineFunc func = (CombineFunc) GetProcAddress(dllHandle, "combine");
+			
+			if(func == NULL) {
+				
+				std::cout << "Job: function retrieval failed .. Error: " << GetLastError() << std::endl;
+				return false;
+			}
+
+			std::vector<Buffer*> temp;
+
+			for(int i = 0; i < m_results.size(); i++) {
+
+				temp.push_back(&m_results[i].buff);
+			}
+
+			func(temp, m_result.buff);
+
+		}
+
+		return true;
+	}
 	
 	bool isComplete() {
 		
@@ -144,6 +181,19 @@ struct Job {
 	bool isLocal() {
 
 		return _isRemoteInstance;
+	}
+
+	void setNumSegments(int segs) {
+		m_numSegments = segs;
+	}
+
+	int getNumSegments() {
+		return m_numSegments;
+	}
+
+	int getNumResults() {
+
+		return m_results.size();
 	}
 
 	Resource& getResult() {

@@ -7,6 +7,7 @@
 #include "DataSegmenter.h"
 #include "ConfigLoader.h"
 #include "TaskQueue.h"
+#include "NodeManager.h"
 
 #include <iostream>
 
@@ -84,6 +85,26 @@ int main(int argc, char **argv) {
         resource.destManager = "job_manager";
     });
 
+    decoder.registerHandler(RESOURCE_TYPE_STATUS, [](EncoderHeader* header, char* payload, Resource& resource) {
+
+        std::cout << "Decoder: Status section detected!" << " payload size: " << header->payloadSize << std::endl;
+        
+        resource.buff.write(payload, header->payloadSize);
+
+        resource.target[0] = '1';
+        resource.target[1] = '2';
+        resource.target[2] = '7';
+        resource.target[3] = '.';
+        resource.target[4] = '0';
+        resource.target[5] = '.';
+        resource.target[6] = '0';
+        resource.target[7] = '.';
+        resource.target[8] = '1';
+        resource.target[9] = '\0';
+
+        resource.destManager = "node_manager";
+    });
+
     encoder.registerHandler(RESOURCE_TYPE_CODE, [](Buffer& buff, Resource& resource) {
 
         std::cout << "Encoder: Code section detected!" << " payload size: " << resource.buff.getSize() << std::endl;
@@ -142,6 +163,20 @@ int main(int argc, char **argv) {
 
     });
 
+    encoder.registerHandler(RESOURCE_TYPE_STATUS, [](Buffer& buff, Resource& resource) {
+
+        std::cout << "Encoder: Status section detected!" << std::endl;
+
+        EncoderHeader header;
+        header.type         = resource.type;
+        header.payloadSize  = resource.buff.getSize();
+        header.jobID        = resource.jobID;
+
+        buff.write((char*)&header, sizeof(EncoderHeader));
+        buff.write(resource.buff.getBase(), resource.buff.getSize());
+
+    });
+
 
     segmenter.registerHandler("dat", [](Buffer& input, std::vector<Buffer>& segments) {
 
@@ -176,6 +211,7 @@ int main(int argc, char **argv) {
 
     NetworkManager netMan(dispatcher, taskQueue, decoder, encoder);
     JobManager     jobMan(dispatcher, taskQueue, segmenter);
+    NodeManager    nodeMan(dispatcher, taskQueue, netMan);
 
     std::map<int, std::function<void()>> primary_actions;
 
@@ -233,7 +269,7 @@ int main(int argc, char **argv) {
     
         for(int i = 1; i < ipList.size(); i++) {
 
-            if(!netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT)) {
+            if(!netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT, false)) {
                 std::cout << "Adding pending connection..." << std::endl;
             }
         }
@@ -241,6 +277,10 @@ int main(int argc, char **argv) {
         
 
     }});
+
+    // std::cout << "SIZE_OF SIZE_T SIZE: " << sizeof(size_t) << std::endl;
+    // std::cout << "SIZE_OF UINT SIZE: " << sizeof(unsigned int) << std::endl;
+    // std::cout << "SIZE_OF INT SIZE: " << sizeof(int) << std::endl;
 
     netMan.start();
     jobMan.start();

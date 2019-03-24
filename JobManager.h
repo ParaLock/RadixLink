@@ -8,6 +8,7 @@ private:
 	std::map<int, Job> m_currentIncomingJobs;
     std::map<int, Job> m_currentOutgoingJobs;
     DataSegmenter&     m_segmentor;
+
 public:
 
 	JobManager(IDispatcher& dispatcher, TaskQueue& taskQueue, DataSegmenter& segmentor) 
@@ -68,14 +69,6 @@ public:
         for (auto it = m_currentIncomingJobs.begin(); it != m_currentIncomingJobs.end(); it++ ) {
             
             if(it->second.isRunnable() && !it->second.isComplete()) {
-                
-                // m_workQueue.addTask(Task(
-                //         "job_thread",
-                //         [this, &it]() {
-
-         
-                //         }
-                // ));
 
                 it->second.execute();
 
@@ -93,6 +86,9 @@ public:
 
                 //std::cout << "JobManager: Job Complete: " << std::endl;
             }
+
+            it->second.combineResults();
+
         }
     }
 
@@ -118,12 +114,15 @@ public:
         Job newJob;
         newJob.id = jobID;
         newJob._isRemoteInstance = false;
+        newJob.m_codeFn = codeFn;
 
         std::vector<Buffer> segments;
 
         std::cout << "JobManager: segmenting data..." << std::endl;
 
         m_segmentor.run(dataFn, split(dataFn, '.')[1], segments);
+
+        newJob.setNumSegments(segments.size());
 
         std::cout << "JobManager: num segments: " << segments.size() << std::endl;
 

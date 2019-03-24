@@ -83,14 +83,16 @@ public:
 			"net_listen_thread",
 			std::bind(&NetworkManager::acceptConnection, this)
 		));
+
+		//connectToNode("127.0.0.1", DEFAULT_PORT, false);
 	}
 
 	std::vector<std::string>& getActiveNodes();
 
-	bool connectToNode(const char* target, const char* port);
+	bool connectToNode(const char* target, const char* port, bool isSingleton);
 	bool disconnect(std::string nodeName);
 	
-	void processConnection(std::string target, std::string port);
+	void processConnection(std::string target, std::string port, bool isSingletor);
 
 	bool write(std::string nodeName, Buffer& buff);
 	bool read(std::string nodeName, Buffer& buff);

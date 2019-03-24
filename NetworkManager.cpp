@@ -1,25 +1,25 @@
 
 #include "NetworkManager.h"
 
-bool NetworkManager::connectToNode(const char* target, const char* port) {
+bool NetworkManager::connectToNode(const char* target, const char* port, bool isSingleton = false) {
 
     std::string tempTarget = target;
-    std::string tempPort       = port;
+    std::string tempPort   = port;
 
     m_pendingConnections.push_back(std::make_pair(target, port));
 
     m_workQueue.addTask(Task(
 			"net_connection_thread",
-            [tempTarget, tempPort, this]() {
+            [tempTarget, tempPort, isSingleton, this]() {
 
-                this->processConnection(tempTarget, tempPort);
+                this->processConnection(tempTarget, tempPort, isSingleton);
             }
 	));
     
 	return true;
 }
 
-void NetworkManager::processConnection(std::string target, std::string port) {
+void NetworkManager::processConnection(std::string target, std::string port, bool isSingleton = false) {
 
     Connection connection;
     connection.ip = target;
@@ -102,6 +102,7 @@ void NetworkManager::processConnection(std::string target, std::string port) {
 
     m_pendingConnections.pop_back();
     m_connections.insert({name, connection});
+
     m_activeConnections.push_back(name);
 }
 
@@ -135,15 +136,21 @@ bool NetworkManager::write(std::string nodeName, Buffer& buff) {
 
 	Connection con = m_connections.at(nodeName);
 	
-	size_t size = buff.getSize();
+	unsigned int size = buff.getSize();
     size_t bytesSent = 0;
     int iResult = 0;
 
-	send( con.socket, (char*)&size, sizeof(size_t), 0);
+	send( con.socket, (char*)&size, sizeof(unsigned int), 0);
 
     do {
 
         iResult = send(con.socket, buff.getBase() + bytesSent, size - bytesSent, 0);
+
+        if(iResult == SOCKET_ERROR) {
+
+            return false;
+        }
+
         bytesSent += iResult;
 
     } while(bytesSent < size);
@@ -168,7 +175,7 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 	Connection con = m_connections.at(nodeName);
 	
 	size_t bytesReceived = 0;
-	size_t size = 0;
+	unsigned int size = 0;
 
     u_long readableBytes = 0;
 	
@@ -176,12 +183,12 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 
     if(readableBytes == 0) {
 
-        return false;
+         return true;
     }
 
     std::cout << "NetManager: Readable bytes on socket: " << readableBytes << std::endl;
 
-	recv(con.socket, (char*)&size, sizeof(size_t), 0);
+	recv(con.socket, (char*)&size, sizeof(unsigned int), 0);
 
     std::cout << "NetManager: Incoming buffer size: " << size << std::endl;
 	
@@ -190,9 +197,19 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
  //CHECK FOR DISCONNECT: SOCKET_ERROR and WSAGetLastError() returns WSAECONNRESET
 
     // Receive until the peer shuts down the connection
+
+    int iResult;
+
    do {
-        bytesReceived += recv(con.socket, buff.getBase() + bytesReceived, size - bytesReceived, 0);
+        iResult = recv(con.socket, buff.getBase() + bytesReceived, size - bytesReceived, 0);
 		
+        if(iResult == SOCKET_ERROR) {
+
+            return false;
+        }
+
+        bytesReceived += iResult;
+
     }  while(bytesReceived < size);
 	
     printf("Bytes Received: %ld\n", bytesReceived);
@@ -293,7 +310,7 @@ void NetworkManager::acceptConnection() {
             con.ip = ip;
 
 
-            //std::cout << "NetworkManager: Client connected to server: " << std::string(ip) << std::endl;
+            std::cout << "NetworkManager: Client connected to server: " << std::string(ip) << std::endl;
 
             std::string name = std::string(ip);
 
@@ -315,16 +332,21 @@ void NetworkManager::execute() {
 		Buffer buff;
 		std::vector<Resource> resources;
 		
-		read(m_activeConnections[i], buff);
+		if(read(m_activeConnections[i], buff)) {
 
-		m_decoder.run(buff, resources);
-		
-        for(int i = 0; i < resources.size(); i++) {
+            m_decoder.run(buff, resources);
+            
+            for(int i = 0; i < resources.size(); i++) {
 
-            std::cout << "NetManager: resource received over network: " << resources[i].type << std::endl;
+                std::cout << "NetManager: resource received over network: " << resources[i].type << std::endl;
+            }
+
+            putResources(resources);
+        
+        } else {
+
+            std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
         }
-
-		putResources(resources);
 	}
 
     std::vector<Resource> res;
@@ -368,7 +390,10 @@ void NetworkManager::execute() {
 
             std::cout << "NetManager: sending multi-cast resources..." << std::endl;
 
-            write(m_activeConnections[i], generalBuff);
+            if(!write(m_activeConnections[i], generalBuff)) {
+
+                std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
+            }
 
         }
     }
@@ -377,7 +402,10 @@ void NetworkManager::execute() {
         
         std::cout << "NetManager: sending targeted resource to " << targets[i] << std::endl;
 
-        write(targets[i], targeted[i]);
+        if(write(targets[i], targeted[i])) {
+            
+            std::cout << "NetManager: node " << targets[i] << " communication failure... " << std::endl;
+        }
     }
 
     if(isRunning()) {

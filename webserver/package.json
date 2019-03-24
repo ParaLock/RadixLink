@@ -1,0 +1,20 @@
+{
+  "name": "radix-control",
+  "version": "0.1.0",
+  "description": "RadixLink control panel",
+  "main": "server.js",
+  "scripts": {
+    "start": ""
+  },
+  "author": "Nathanael Mercaldo",
+  "license": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.16.4",
+    "net": "^1.0.2",
+    "typebase": "^1.0.1"
+  },
+  "devDependencies": {
+    "pm2": "^2.10.3"
+  }
+}

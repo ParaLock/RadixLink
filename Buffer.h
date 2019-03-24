@@ -13,7 +13,7 @@ struct Buffer {
 
 	~Buffer() {	}
 
-	void write(char* src, size_t size, bool incPos = true) {
+	void write(char* src, unsigned int size, bool incPos = true) {
 		
 		unsigned int count = 0;
 		
@@ -26,7 +26,7 @@ struct Buffer {
 		}
 	}
 	
-	size_t getSize() {
+	unsigned int getSize() {
 		
 		return data.size();
 	}

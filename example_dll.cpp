@@ -23,13 +23,13 @@ __stdcall void run(char *s, size_t size, Buffer& result)
     result.write((char*)&sum, sizeof(sum));
 }
 
-__stdcall void combine(std::vector<Buffer>& results, Buffer& finalResult)
+__stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)
 {
     unsigned long long sum = 0;
 
     for(int i = 0; i < results.size(); i++) {
             
-        sum += *(unsigned long long*)results[i].getBase();
+        sum += *(unsigned long long*)results[i]->getBase();
         
     }
 
