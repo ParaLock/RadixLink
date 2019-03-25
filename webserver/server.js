@@ -89,6 +89,7 @@ function unpackRadixLinkBuffer(buffer) {
 	var str = "";
 	var payloadSize = 0;
 
+	//Payload is 32bit int
 	payloadSize = buffer.readInt32LE(SIZE_TYPE + SIZE_JOBID);
 
 	var offset = SIZE_TYPE + SIZE_JOBID + SIZE_PAYLOAD;

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Manager.h"
 #include "Job.h"
 #include "DataSegmenter.h"

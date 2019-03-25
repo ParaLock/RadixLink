@@ -27,8 +27,7 @@ int main(int argc, char **argv) {
 
     srand(time(NULL));
 
-    TaskQueue taskQueue;
-
+ 
     Encoder encoder;
     Decoder decoder;
     DataSegmenter segmenter;
@@ -208,10 +207,11 @@ int main(int argc, char **argv) {
 
 
     Dispatcher dispatcher;
+    TaskQueue  taskQueue;
 
     NetworkManager netMan(dispatcher, taskQueue, decoder, encoder);
     JobManager     jobMan(dispatcher, taskQueue, segmenter);
-    NodeManager    nodeMan(dispatcher, taskQueue, netMan);
+    NodeManager    nodeMan(dispatcher, taskQueue, netMan, jobMan);
 
     std::map<int, std::function<void()>> primary_actions;
 
@@ -284,6 +284,7 @@ int main(int argc, char **argv) {
 
     netMan.start();
     jobMan.start();
+    nodeMan.start();
 
     primary_actions.insert({8, []{}});
 
@@ -311,6 +312,7 @@ int main(int argc, char **argv) {
 
     netMan.stop();
     jobMan.stop();
+    nodeMan.stop();
 
     WSACleanup();
 

@@ -40,6 +40,11 @@ struct Buffer {
 		return &data[0];
 	}
 	
+	void clear() {
+
+		data.clear();
+	}
+
 	void resize(size_t num) {
 
 		data.resize(num);

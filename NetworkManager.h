@@ -83,8 +83,6 @@ public:
 			"net_listen_thread",
 			std::bind(&NetworkManager::acceptConnection, this)
 		));
-
-		//connectToNode("127.0.0.1", DEFAULT_PORT, false);
 	}
 
 	std::vector<std::string>& getActiveNodes();

@@ -2,21 +2,43 @@
 
     <head>
 
-
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"> </script>
-
-        <style type="text/css">
+        
+        <style>
             #mynetwork {
-                width: 600px;
-                height: 400px;
+                width: 1000px;
+                height: 800px;
                 border: 1px solid lightgray;
             }
-        </style>
+            .dropdown {
+                z-index: 999;
+                position: fixed;
+                display: none;
+                background-color: lightblue;
+            }
+            .dropdownItem {
 
+                display: block;
+                position: relative;
+                background-color: #f9f9f9;
+                min-width: 160px;
+                box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+                padding: 12px 16px;
+                z-index: 1;
+
+                cursor: pointer;
+            }
+
+            .dropdownItem:hover {
+                background-color: grey;
+            }
+
+        </style>
         <script>
-            
+
             nodeIdByIP = {};
 
             currentlyActiveNodes = [];
@@ -31,7 +53,7 @@
 
             }
 
-            sendRequest = function (name, data) { // here the data and url are not hardcoded anymore
+            function sendRequest(name, data) { // here the data and url are not hardcoded anymore
 
                     return $.ajax({
                         type: "post",
@@ -42,8 +64,6 @@
                         success: function(data) {
                             
                             var tokens = data.split('-');
-
-                            console.log("TEST");
 
                             if(tokens[0] == "active_node_list") {
 
@@ -72,6 +92,21 @@
                     });
             }
             
+            function ctxMenuClick(action) {
+
+                if(action == "create_job") {
+
+                    var codeFn = window.prompt("Code filename: ");
+                    var dataFn = window.prompt("Data filename: ");
+                    var jobName = window.prompt("Job name: ");
+
+                    if(codeFn.length > 0 && dataFn.length > 0 && jobName.length > 0) {
+
+                        sendRequest(action, codeFn + "-" + dataFn + "-" + jobName);
+                    }
+                }
+            }
+
             window.onload = function() {
 
                 nodes = new vis.DataSet([]);
@@ -83,7 +118,7 @@
                     nodes: nodes,
                     edges: edges
                 };
-                options = {};
+                options = {interaction:{hover:true}};
                 network = new vis.Network(container, data, options);
 
                 var thisNode = Math.random();
@@ -92,6 +127,20 @@
 
                 nodeIdByIP["127.0.0.1"] = thisNode;
 
+                network.on("click", function (params) {
+
+                    console.log(params);
+
+                    if(params.nodes.length > 0) {
+
+                        $("#dropdown").css({ 'display': 'inline-block', 'top': event.clientY + "px", 'left': event.clientX + "px" });
+
+                    } else {
+
+                        $("#dropdown").css({ 'display': 'none' });
+                    }
+
+                });
             };
 
 
@@ -100,6 +149,12 @@
     </head>
 
     <body>
+        
+        <!-- Dropdown from W3 schools -->
+        <div id="dropdown" class="dropdown">
+            <a onclick="ctxMenuClick('create_job')" class="dropdownItem" >Create Job</a>
+            <a class="dropdownItem" >Get Job Result</a>
+        </div>
 
         <div id="mynetwork"></div>
 

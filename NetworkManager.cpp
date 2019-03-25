@@ -373,7 +373,12 @@ void NetworkManager::execute() {
 
         } else {
 
+            if(strcmp(res[i].target, "127.0.0.1") == 0 && res[i].type != RESOURCE_TYPE_STATUS) {
+                continue;
+            }
+
             Buffer buff;
+
             targeted.push_back(buff);
 
             targets.push_back(res[i].target);
