@@ -183,28 +183,31 @@ int main(int argc, char **argv) {
 
         std::vector<std::string> nums = split(str, '-');
 
+        for(int i = 0; i < nums.size(); i++) {
+
+            std::cout << "Segmenter: segment value: " << std::stoull(nums[i]) << std::endl;
+        }
+
+
         int count = 0;
 
-        segments.push_back(Buffer());
+        for(int i = 0; i < nums.size() / 2; i++) {
 
-        for(int i = 0; i < nums.size(); i++) {
-            
-            Buffer& buff = segments.back();
+            segments.push_back(Buffer());
+        }
 
-            unsigned long long data = std::stoull(nums[i]);
-            buff.write((char*)&data, sizeof(unsigned long long));
+        for(int i = 0; i < segments.size(); i++) {
 
-            if(count == 2) {
+            for(int j = 0; j < 2; j++) {
 
-                segments.push_back(Buffer());
+                unsigned long long data = std::stoull(nums[count]);
+                auto& buff = segments[i];
+                buff.write((char*)&data, sizeof(unsigned long long));
 
-                count = 0;
+                count++;
             }
-
-            count++;
         }
     });
-
 
     Dispatcher dispatcher;
     TaskQueue  taskQueue;

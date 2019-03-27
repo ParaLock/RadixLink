@@ -42,15 +42,22 @@ public:
 
             std::string msg = "";
 
+            for(int j = 0; j < tokens.size(); j++) {
+
+                std::cout << "NodeManager: incoming token: " << tokens[j] << std::endl;
+            }
+
             if(tokens[0] == "get_active_nodes") {
+                
+                std::cout << "NodeManager: Processing status request." << std::endl; 
 
                 auto& nodes = m_netMan.getActiveNodes();
 
-                std::string msg = "active_node_list-";
+                msg = "active_node_list-";
 
                 for(int j = 0; j < nodes.size(); j++) {
 
-                    msg += nodes[i];
+                    msg += nodes[j];
 
                     if(j != nodes.size() - 1) {
 

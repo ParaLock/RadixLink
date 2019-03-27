@@ -50,7 +50,7 @@
 
             function getNodeList(tokens) {
 
-
+                return tokens.slice(1);
             }
 
             function sendRequest(name, data) { // here the data and url are not hardcoded anymore
@@ -77,7 +77,7 @@
                                         
                                         var myId = nodeIdByIP["127.0.0.1"];
 
-                                        nodes.add([{id: id, label: ips[i], first: false }]);
+                                        nodes.add([{id: id, label: ips[i], first: false, shape: 'box' }]);
                                         edges.add([{from: myId, to: id}]);
 
                                         nodeIdByIP[ips[i]] = id;
@@ -123,7 +123,7 @@
 
                 var thisNode = Math.random();
 
-                nodes.add([{id: thisNode, label: '127.0.0.1', first: true }]);
+                nodes.add([{id: thisNode, label: '127.0.0.1', first: true, shape: 'square' }]);
 
                 nodeIdByIP["127.0.0.1"] = thisNode;
 

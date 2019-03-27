@@ -38,6 +38,8 @@ client.on('data', function(data) {
 
 		var str = unpackRadixLinkBuffer(data);
 
+		console.log(str);
+
 		latestRequest.setHeader('Content-Type', 'charset=utf-8');
     	latestRequest.end(str);
 	}

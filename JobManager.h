@@ -127,6 +127,8 @@ public:
         newJob.setNumSegments(segments.size());
 
         std::cout << "JobManager: num segments: " << segments.size() << std::endl;
+        std::cout << "JobManager: num available nodes" << availableNodes.size() << std::endl;
+
 
         if(availableNodes.size() < segments.size()) {
             

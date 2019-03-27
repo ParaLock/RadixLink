@@ -78,7 +78,6 @@ public:
 		m_listening     = true;
 		m_connecting    = true;
 		
-
 		queue.addTask(Task(
 			"net_listen_thread",
 			std::bind(&NetworkManager::acceptConnection, this)

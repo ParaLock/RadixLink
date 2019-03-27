@@ -94,7 +94,7 @@ void NetworkManager::processConnection(std::string target, std::string port, boo
     getpeername(ConnectSocket, (sockaddr*)&client_info, &client_info_size);
     char *ip = inet_ntoa(client_info.sin_addr);
     
-    std::cout << "NetworkManager: Client connected: " << std::string(ip) << std::endl;
+    std::cout << "NetworkManager: Connected to node: " << std::string(ip) << std::endl;
 
     std::string name = std::string(ip);
 
@@ -102,8 +102,9 @@ void NetworkManager::processConnection(std::string target, std::string port, boo
 
     m_pendingConnections.pop_back();
     m_connections.insert({name, connection});
-
-    m_activeConnections.push_back(name);
+    
+   // std::cout << "NetManager: adding active node: " << name << std::endl;
+    //m_activeConnections.push_back(name);
 }
 
 bool NetworkManager::disconnect(std::string nodeName) {
@@ -147,6 +148,8 @@ bool NetworkManager::write(std::string nodeName, Buffer& buff) {
         iResult = send(con.socket, buff.getBase() + bytesSent, size - bytesSent, 0);
 
         if(iResult == SOCKET_ERROR) {
+            
+            std::cout << "NetManager: communications error: node: " << nodeName << std::endl; 
 
             return false;
         }
@@ -202,8 +205,10 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 
    do {
         iResult = recv(con.socket, buff.getBase() + bytesReceived, size - bytesReceived, 0);
-		
+
         if(iResult == SOCKET_ERROR) {
+            
+            std::cout << "NetManager: communications error: node: " << nodeName << std::endl; 
 
             return false;
         }
@@ -310,7 +315,7 @@ void NetworkManager::acceptConnection() {
             con.ip = ip;
 
 
-            std::cout << "NetworkManager: Client connected to server: " << std::string(ip) << std::endl;
+            std::cout << "NetworkManager: Client " << std::string(ip) << " connected" << std::endl;
 
             std::string name = std::string(ip);
 
@@ -373,6 +378,7 @@ void NetworkManager::execute() {
 
         } else {
 
+            //Disgusting hack I know..
             if(strcmp(res[i].target, "127.0.0.1") == 0 && res[i].type != RESOURCE_TYPE_STATUS) {
                 continue;
             }
@@ -407,7 +413,7 @@ void NetworkManager::execute() {
         
         std::cout << "NetManager: sending targeted resource to " << targets[i] << std::endl;
 
-        if(write(targets[i], targeted[i])) {
+        if(!write(targets[i], targeted[i])) {
             
             std::cout << "NetManager: node " << targets[i] << " communication failure... " << std::endl;
         }
