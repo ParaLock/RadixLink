@@ -10,7 +10,7 @@ var app = express();
 var port = 8000;
 var serverUrl = "localhost";
 
-var latestRequest = {};
+var requestQueue = [];
 
 console.log("Starting web server at " + serverUrl + ":" + port);
 
@@ -39,9 +39,13 @@ client.on('data', function(data) {
 		var str = unpackRadixLinkBuffer(data);
 
 		console.log(str);
+		
+		if(requestQueue.length == 1) {
+			var req = requestQueue.shift();
 
-		latestRequest.setHeader('Content-Type', 'charset=utf-8');
-    	latestRequest.end(str);
+			req.setHeader('Content-Type', 'charset=utf-8');
+			req.end(str);
+		}
 	}
 });
 
@@ -108,7 +112,8 @@ app.post('/', function(req, res, next) {
 
 		client.write(packRadixLinkBuffer(chunk.toString()));
 		
-		latestRequest = res;
+		if(requestQueue.length == 0)
+			requestQueue.push(res);
 
 	});
 });

@@ -319,14 +319,60 @@ void NetworkManager::acceptConnection() {
 
             std::string name = std::string(ip);
 
+            if(name == "127.0.0.1") {
+
+                m_monitorConnected = true;
+                
+                m_connections.insert({name, con});
+
+                return;
+            }
+            
             m_activeConnections.push_back(name);
+
             m_connections.insert({name, con});
             
         }
     }
 }
 
+void NetworkManager::monitoringLoop() {
+
+    if(m_monitorConnected) {
+
+        Buffer out_buff;
+        std::vector<Resource> monitorResponses;
+
+        getResources(5, monitorResponses, "monitor");
+
+        m_encoder.run(out_buff, monitorResponses);
+
+        if(monitorResponses.size() > 0)
+            write("127.0.0.1", out_buff);
+
+        Buffer in_buff;
+        std::vector<Resource> monitorRequests;
+
+        
+        read("127.0.0.1", in_buff);
+
+        m_decoder.run(in_buff, monitorRequests);
+
+        putResources(monitorRequests, "monitor");
+    }
+
+    if(isRunning()) {
+
+        Sleep(200);
+        m_workQueue.addTask(Task(
+			"net_monitoring_thread",
+			std::bind(&NetworkManager::monitoringLoop, this)
+		));
+    }
+}
+
 std::vector<std::string>& NetworkManager::getActiveNodes() {
+
     return m_activeConnections;
 }
 
@@ -336,8 +382,10 @@ void NetworkManager::execute() {
 
 		Buffer buff;
 		std::vector<Resource> resources;
-		
+
 		if(read(m_activeConnections[i], buff)) {
+
+            m_stateReg.updateState("reading_from", m_activeConnections[i]);
 
             m_decoder.run(buff, resources);
             
@@ -346,17 +394,19 @@ void NetworkManager::execute() {
                 std::cout << "NetManager: resource received over network: " << resources[i].type << std::endl;
             }
 
-            putResources(resources);
+            putResources(resources, "primary");
         
         } else {
 
             std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
         }
+
+        m_stateReg.updateState("reading_from", std::string("none"));
 	}
 
     std::vector<Resource> res;
 
-    getResources(5, res);
+    getResources(5, res, "primary");
 
     for(int i = 0; i < res.size(); i++) {
 
@@ -378,11 +428,6 @@ void NetworkManager::execute() {
 
         } else {
 
-            //Disgusting hack I know..
-            if(strcmp(res[i].target, "127.0.0.1") == 0 && res[i].type != RESOURCE_TYPE_STATUS) {
-                continue;
-            }
-
             Buffer buff;
 
             targeted.push_back(buff);
@@ -401,10 +446,14 @@ void NetworkManager::execute() {
 
             std::cout << "NetManager: sending multi-cast resources..." << std::endl;
 
+            m_stateReg.updateState("writing_too", m_activeConnections[i]);
+
             if(!write(m_activeConnections[i], generalBuff)) {
 
                 std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
             }
+
+            m_stateReg.updateState("writing_too", std::string("none"));
 
         }
     }
@@ -413,10 +462,15 @@ void NetworkManager::execute() {
         
         std::cout << "NetManager: sending targeted resource to " << targets[i] << std::endl;
 
+        m_stateReg.updateState("writing_too", targets[i]);
+
+
         if(!write(targets[i], targeted[i])) {
             
             std::cout << "NetManager: node " << targets[i] << " communication failure... " << std::endl;
         }
+
+        m_stateReg.updateState("writing_too", std::string("none"));
     }
 
     if(isRunning()) {

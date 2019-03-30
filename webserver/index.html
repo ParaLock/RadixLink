@@ -40,15 +40,11 @@
         <script>
 
             nodeIdByIP = {};
+            edgeByFromIP = {};
 
             currentlyActiveNodes = [];
 
-            function addNodes(nodes) {
-
-
-            }
-
-            function getNodeList(tokens) {
+            function prepare(tokens) {
 
                 return tokens.slice(1);
             }
@@ -63,27 +59,87 @@
                         contentType: "charset=utf-8",
                         success: function(data) {
                             
+                            console.log(data);
+
                             var tokens = data.split('-');
 
                             if(tokens[0] == "active_node_list") {
 
-                                var ips = getNodeList(tokens);
+                                var ips = prepare(tokens);
 
                                 for(var i = 0; i < ips.length; i++) {
 
                                     if(!nodeIdByIP.hasOwnProperty(ips[i])) {
 
                                         var id = Math.random();
-                                        
+                                        var edgeId = Math.random();
+
                                         var myId = nodeIdByIP["127.0.0.1"];
 
                                         nodes.add([{id: id, label: ips[i], first: false, shape: 'box' }]);
-                                        edges.add([{from: myId, to: id}]);
+                                        edges.add([{id: edgeId, from: myId, to: id}]);
 
                                         nodeIdByIP[ips[i]] = id;
+                                        edgeByFromIP[ips[i]] = edgeId;
                                     }
                                 }
                             }
+
+                            if(tokens[0] == "node_state") {
+
+                                var states = prepare(tokens);
+                                
+                                var writingToo = states[0];
+                                var readingFrom = states[1];
+
+                                var myNode = nodeIdByIP["127.0.0.1"];
+                                var target = nodeIdByIP[writingToo];
+
+                                var node = nodes.get(myNode);
+                                var targetNode = nodes.get(target);
+                                
+                               // var edge = edges.get();
+
+                                if(writingToo != "none") {
+
+                                    console.log("Setting node color");
+
+                                    node.color = {
+                                        background: 'green'
+                                    }
+
+                                    // targetNode.color = {
+                                    //     background: 'green'
+                                    // }
+
+                                } else {
+                                    console.log("Resetting node color");
+
+                                    node.color = {
+                                        background: '#97C2FC'
+                                    }
+
+                                    // targetNode.color = {
+                                    //     background: '#97C2FC'
+                                    // }
+                                }
+
+                                // if(readingFrom != "none") {
+
+                                //     node.color = {
+                                //         background: 'gre'
+                                //     }
+
+                                // } else {
+
+                                //     node.color = {
+                                //         background: '#97C2FC'
+                                //     }
+                                // }
+                                nodes.update(node);
+                                //nodes.update(targetNode);
+
+                            }  
 
                         }.bind(this),
                         error: function(a, b, c) {
@@ -96,9 +152,13 @@
 
                 if(action == "create_job") {
 
-                    var codeFn = window.prompt("Code filename: ");
-                    var dataFn = window.prompt("Data filename: ");
-                    var jobName = window.prompt("Job name: ");
+                    var codeFn = "example_dll.dll";
+                    var dataFn = "data.dat";
+                    var jobName = "run";
+
+                    codeFn = window.prompt("Code filename: ");
+                    dataFn = window.prompt("Data filename: ");
+                    jobName = window.prompt("Job name: ");
 
                     if(codeFn.length > 0 && dataFn.length > 0 && jobName.length > 0) {
 
@@ -141,6 +201,12 @@
                     }
 
                 });
+
+                setInterval(function() {
+
+                    sendRequest("get_node_state", "a-b-c");
+
+                }.bind(this), 1000);
             };
 
 
@@ -153,7 +219,7 @@
         <!-- Dropdown from W3 schools -->
         <div id="dropdown" class="dropdown">
             <a onclick="ctxMenuClick('create_job')" class="dropdownItem" >Create Job</a>
-            <a class="dropdownItem" >Get Job Result</a>
+            <a onclick="ctxMenuClick('test_state')" class="dropdownItem" >Get Job Result</a>
         </div>
 
         <div id="mynetwork"></div>

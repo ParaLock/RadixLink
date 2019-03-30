@@ -3,6 +3,7 @@
 #include "IManager.h"
 #include "Dispatcher.h"
 #include "Task.h"
+#include "StateRegistry.h"
 #include "TaskQueue.h"
 #include <thread>
 #include <vector>
@@ -14,24 +15,36 @@ class Manager : public IManager{
 private:
     IDispatcher&  m_dispatcher;
 
-    std::vector<Resource> m_resourceQueue;
-
+    std::map<std::string, std::vector<Resource>> m_resourceGroups;
 
     std::string           m_name;
     bool                  m_isRunning;
+
+    void createGroupIfNotPresent(std::string groupName) {
+
+        auto itr = m_resourceGroups.find(groupName);
+
+        if(itr == m_resourceGroups.end()) {
+
+            m_resourceGroups.insert({groupName, std::vector<Resource>()});
+
+        }
+    }
 
 protected:
 
     TaskQueue&            m_workQueue;
     std::string			  m_worker;
+    StateRegistry&        m_stateReg;
 
 
 
 public:
 
-    Manager(IDispatcher& dispatcher, TaskQueue& taskQueue, std::string name) : 
+    Manager(IDispatcher& dispatcher, TaskQueue& taskQueue, StateRegistry& reg, std::string name) : 
             m_dispatcher(dispatcher), 
-            m_workQueue(taskQueue) 
+            m_workQueue(taskQueue),
+            m_stateReg(reg)
     {
 
         m_name = name;
@@ -42,9 +55,15 @@ public:
         m_dispatcher.registerManager(m_name, this);
     }
 
-    void addResources(std::vector<Resource>& resources) {
+    void addResources(std::vector<Resource>& resources, std::string group) {
 
-        m_resourceQueue.insert(m_resourceQueue.end(), resources.begin(), resources.end());
+        std::string groupName = m_name + "-" + group;
+
+        createGroupIfNotPresent(groupName);
+
+        std::vector<Resource>& resourceQueue = m_resourceGroups.at(group);
+
+        resourceQueue.insert(resourceQueue.end(), resources.begin(), resources.end());
 
         if(isRunning()) {
 
@@ -57,9 +76,15 @@ public:
 
     virtual void execute() = 0;
 
-    void addResource(Resource& resource) {
+    void addResource(Resource& resource, std::string group) {
 
-        m_resourceQueue.push_back(std::move(resource));
+        std::string groupName = m_name + "-" + group;
+
+        createGroupIfNotPresent(groupName);
+
+        auto& resVec = m_resourceGroups.at(groupName);
+
+        resVec.push_back(std::move(resource));
 
         m_workQueue.addTask(Task(
             m_worker,
@@ -71,23 +96,35 @@ public:
         return m_name;
     }
 
-    void getResources(int num, std::vector<Resource>& resources) {
+    void getResources(int num, std::vector<Resource>& resources, std::string group) {
 
-        for(int i = 0; i < num && m_resourceQueue.size() > 0; i++) {
+        std::string groupName = m_name + "-" + group;
 
-            resources.push_back(std::move(m_resourceQueue.back()));
-            m_resourceQueue.pop_back();
+        createGroupIfNotPresent(groupName);
+
+        auto& resVec = m_resourceGroups.at(groupName);
+
+        for(int i = 0; i < num && resVec.size() > 0; i++) {
+
+            resources.push_back(std::move(resVec.back()));
+            resVec.pop_back();
         }
     }
 
-    int getNumPendingResources() {
+    int getNumPendingResources(std::string group) {
 
-        return m_resourceQueue.size();
+        std::string groupName = m_name + "-" + group;
+
+        createGroupIfNotPresent(groupName);
+
+        auto& resVec = m_resourceGroups.at(groupName);
+
+        return resVec.size();
     }
 
-    void putResources(std::vector<Resource>& resources) {
+    void putResources(std::vector<Resource>& resources, std::string group) {
 
-        m_dispatcher.dispatch(resources);
+        m_dispatcher.dispatch(resources, group);
     }
 
     bool isRunning() {
@@ -109,4 +146,6 @@ public:
         ));
 
     }
+
+
 };

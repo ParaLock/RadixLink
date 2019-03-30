@@ -8,6 +8,7 @@
 #include "ConfigLoader.h"
 #include "TaskQueue.h"
 #include "NodeManager.h"
+#include "StateRegistry.h"
 
 #include <iostream>
 
@@ -209,12 +210,13 @@ int main(int argc, char **argv) {
         }
     });
 
-    Dispatcher dispatcher;
-    TaskQueue  taskQueue;
+    StateRegistry stateReg;
+    Dispatcher    dispatcher;
+    TaskQueue     taskQueue;
 
-    NetworkManager netMan(dispatcher, taskQueue, decoder, encoder);
-    JobManager     jobMan(dispatcher, taskQueue, segmenter);
-    NodeManager    nodeMan(dispatcher, taskQueue, netMan, jobMan);
+    NetworkManager netMan(dispatcher, taskQueue, stateReg, decoder, encoder);
+    JobManager     jobMan(dispatcher, taskQueue, stateReg, segmenter);
+    NodeManager    nodeMan(dispatcher, taskQueue, stateReg, netMan, jobMan);
 
     std::map<int, std::function<void()>> primary_actions;
 

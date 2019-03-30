@@ -13,8 +13,8 @@ private:
 
 public:
 
-	JobManager(IDispatcher& dispatcher, TaskQueue& taskQueue, DataSegmenter& segmentor) 
-        : Manager(dispatcher, taskQueue, "job_manager"),
+	JobManager(IDispatcher& dispatcher, TaskQueue& taskQueue, StateRegistry& reg, DataSegmenter& segmentor) 
+        : Manager(dispatcher, taskQueue, reg, "job_manager"),
           m_segmentor(segmentor) 
     {
 
@@ -29,7 +29,7 @@ public:
 
         std::vector<Resource> resources;
 
-        getResources(5, resources);
+        getResources(5, resources, "primary");
         
         for(int i = 0; i < resources.size(); i++) {
             
@@ -77,7 +77,7 @@ public:
                 std::vector<Resource> temp;
                 temp.push_back(it->second.getResult());
 
-                this->putResources(temp);
+                this->putResources(temp, "primary");
             }
         }
 
@@ -184,7 +184,7 @@ public:
             temp.push_back(code_resource);
             temp.push_back(result_resource);
 
-            putResources(temp);
+            putResources(temp, "primary");
 
             std::cout << "JobManager: Job segment created for " << availableNodes[i] << std::endl;
         }

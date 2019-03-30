@@ -62,13 +62,15 @@ private:
 	bool 											  m_connecting;
 	std::string 							 		  m_name;
 
+	bool 									          m_monitorConnected;
+
 	Decoder&     						     	 	  m_decoder;
 	Encoder&     						     		  m_encoder;
 
 public:
 	
-	NetworkManager(IDispatcher& dispatcher, TaskQueue& queue, Decoder& decoder, Encoder& encoder) 
-		: Manager(dispatcher, queue, "net_manager"),
+	NetworkManager(IDispatcher& dispatcher, TaskQueue& queue, StateRegistry& reg, Decoder& decoder, Encoder& encoder) 
+		: Manager(dispatcher, queue, reg, "net_manager"),
 		  m_decoder(decoder),
 		  m_encoder(encoder)
 		  
@@ -77,10 +79,21 @@ public:
 		m_serverCreated = false;
 		m_listening     = true;
 		m_connecting    = true;
+		m_monitorConnected = false;
+		
+		
+		m_stateReg.addState<std::string>("writing_too");
+		m_stateReg.addState<std::string>("reading_from");
 		
 		queue.addTask(Task(
 			"net_listen_thread",
 			std::bind(&NetworkManager::acceptConnection, this)
+		));
+
+
+		queue.addTask(Task(
+			"net_monitoring_thread",
+			std::bind(&NetworkManager::monitoringLoop, this)
 		));
 	}
 
@@ -90,6 +103,8 @@ public:
 	bool disconnect(std::string nodeName);
 	
 	void processConnection(std::string target, std::string port, bool isSingletor);
+
+	void monitoringLoop();
 
 	bool write(std::string nodeName, Buffer& buff);
 	bool read(std::string nodeName, Buffer& buff);

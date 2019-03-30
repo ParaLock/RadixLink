@@ -18,8 +18,8 @@ private:
     JobManager&     m_jobMan;
 
 public:
-    NodeManager(IDispatcher& dispatcher, TaskQueue& queue, NetworkManager& netMan, JobManager& jobMan) 
-		: Manager(dispatcher, queue, "node_manager"),
+    NodeManager(IDispatcher& dispatcher, TaskQueue& queue, StateRegistry& reg, NetworkManager& netMan, JobManager& jobMan) 
+		: Manager(dispatcher, queue, reg, "node_manager"),
         m_netMan(netMan),
         m_jobMan(jobMan)
     {
@@ -30,7 +30,7 @@ public:
 
         std::vector<Resource> res;
 
-        getResources(5, res);
+        getResources(5, res, "monitor");
 
         for(int i = 0; i < res.size(); i++) {
 
@@ -71,6 +71,22 @@ public:
                 m_jobMan.createJob(tokens[1], tokens[2], tokens[3], m_netMan.getActiveNodes());
             }
 
+            if(tokens[0] == "get_node_state") {
+
+                auto boolToStr = [](bool b)
+                {
+                    return b ? "true" : "false";
+                };
+
+                std::string writingToo = m_stateReg.getState<std::string>("writing_too");
+                std::string readingFrom = m_stateReg.getState<std::string>("reading_from");
+
+                msg = "node_state-";
+                msg += writingToo;
+                msg += "-";
+                msg += readingFrom;
+            }
+
             res[i].buff.clear();
             res[i].buff.write((char*)msg.c_str(), msg.size());
 
@@ -81,7 +97,7 @@ public:
             res[i].destManager = "net_manager";
         }
 
-        putResources(res);
+        putResources(res, "monitor");
 
     }
 };

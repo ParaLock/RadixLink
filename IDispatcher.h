@@ -10,6 +10,6 @@ class IDispatcher {
 private:
 public:	
 
-	virtual void dispatch(std::vector<Resource>& resources) = 0;
+	virtual void dispatch(std::vector<Resource>& resources, std::string group) = 0;
 	virtual void registerManager(std::string name, IManager* manager) = 0;
 };
