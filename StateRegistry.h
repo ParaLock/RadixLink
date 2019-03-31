@@ -12,18 +12,18 @@ private:
 
         void*                 data;
 
-        std::function<void()> deleteState;
-        std::function<void()> createState;
+        std::function<void(void*&)> deleteState;
+        std::function<void(void*&)> createState;
 
         template<typename T>
         void init() {
 
-            createState = [this]() {
+            createState = [](void*& data) {
 
                 data = new T;
             };
 
-            deleteState = [this]() {
+            deleteState = [](void*& data) {
 
                 delete (T*)data;
             };
@@ -31,12 +31,12 @@ private:
 
         void create() {
 
-            createState();
+            createState(data);
         }
 
         void _delete() {
 
-            deleteState();
+            deleteState(data);
         }
 
         template<typename T>

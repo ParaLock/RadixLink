@@ -42,7 +42,72 @@
             nodeIdByIP = {};
             edgeByFromIP = {};
 
+            edgesToReset = [];
+            nodesToReset = [];
+
             currentlyActiveNodes = [];
+
+            function resetVisualization() {
+
+                var myNode = nodes.get(nodeIdByIP["127.0.0.1"]);
+
+                myNode.color = {
+                    background: '#97C2FC'
+                }
+
+                nodes.update(myNode);
+
+                var len = nodesToReset.length;
+
+                for(var i = 0; i < len; i++) {
+
+                    var lastNode = nodesToReset.shift();
+
+                    lastNode.color = {
+                        background: "#97C2FC"
+                    }
+                    nodes.update(lastNode);
+                }
+
+                len = edgesToReset.length;
+
+                for(var i = 0; i < len; i++) {
+
+                    var lastEdge = edgesToReset.shift();
+
+                    lastEdge.label = ' ';
+
+                    edges.update(lastEdge);
+                }
+
+                network.body.emitter.emit('_dataChanged');
+                network.redraw();
+            }
+
+            function visualizeIO(targetName, targetColor, myColor, text) {
+
+                var myNode = nodes.get(nodeIdByIP["127.0.0.1"]);
+                var target = nodes.get(nodeIdByIP[targetName]);
+                var myEdge = edges.get(edgeByFromIP[targetName]);
+
+                target.color = {
+                    background: targetColor
+                }
+
+                myNode.color = {
+                    background: myColor
+                }
+
+                myEdge.label = text;
+
+                nodesToReset.push(target);
+                edgesToReset.push(myEdge);
+
+                nodes.update(target);
+                nodes.update(myNode);
+                edges.update(myEdge);
+            
+            }
 
             function prepare(tokens) {
 
@@ -86,59 +151,27 @@
                             }
 
                             if(tokens[0] == "node_state") {
-
-                                var states = prepare(tokens);
                                 
+                                var states = prepare(tokens);
+
                                 var writingToo = states[0];
                                 var readingFrom = states[1];
 
-                                var myNode = nodeIdByIP["127.0.0.1"];
-                                var target = nodeIdByIP[writingToo];
+                                if(writingToo != "none" && writingToo != "") {
 
-                                var node = nodes.get(myNode);
-                                var targetNode = nodes.get(target);
+                                    visualizeIO(writingToo, "#70db6d", "#0080ff", "Writing...");
+                                }
                                 
-                               // var edge = edges.get();
+                                if(readingFrom != "none" && readingFrom != "") {
 
-                                if(writingToo != "none") {
-
-                                    console.log("Setting node color");
-
-                                    node.color = {
-                                        background: 'green'
-                                    }
-
-                                    // targetNode.color = {
-                                    //     background: 'green'
-                                    // }
-
-                                } else {
-                                    console.log("Resetting node color");
-
-                                    node.color = {
-                                        background: '#97C2FC'
-                                    }
-
-                                    // targetNode.color = {
-                                    //     background: '#97C2FC'
-                                    // }
+                                    visualizeIO(readingFrom, "#0080ff", "#70db6d", "Reading...");
                                 }
 
-                                // if(readingFrom != "none") {
 
-                                //     node.color = {
-                                //         background: 'gre'
-                                //     }
-
-                                // } else {
-
-                                //     node.color = {
-                                //         background: '#97C2FC'
-                                //     }
-                                // }
-                                nodes.update(node);
-                                //nodes.update(targetNode);
-
+                                if(writingToo == "none" && readingFrom == "none") {
+                                    
+                                    resetVisualization();
+                                }
                             }  
 
                         }.bind(this),
@@ -156,9 +189,9 @@
                     var dataFn = "data.dat";
                     var jobName = "run";
 
-                    codeFn = window.prompt("Code filename: ");
-                    dataFn = window.prompt("Data filename: ");
-                    jobName = window.prompt("Job name: ");
+                    // codeFn = window.prompt("Code filename: ");
+                    // dataFn = window.prompt("Data filename: ");
+                    // jobName = window.prompt("Job name: ");
 
                     if(codeFn.length > 0 && dataFn.length > 0 && jobName.length > 0) {
 
@@ -206,7 +239,7 @@
 
                     sendRequest("get_node_state", "a-b-c");
 
-                }.bind(this), 1000);
+                }.bind(this), 16);
             };
 
 

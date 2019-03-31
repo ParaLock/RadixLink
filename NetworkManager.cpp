@@ -363,7 +363,6 @@ void NetworkManager::monitoringLoop() {
 
     if(isRunning()) {
 
-        Sleep(200);
         m_workQueue.addTask(Task(
 			"net_monitoring_thread",
 			std::bind(&NetworkManager::monitoringLoop, this)
@@ -382,10 +381,10 @@ void NetworkManager::execute() {
 
 		Buffer buff;
 		std::vector<Resource> resources;
+        
+        m_stateReg.updateState("reading_from", m_activeConnections[i]);
 
 		if(read(m_activeConnections[i], buff)) {
-
-            m_stateReg.updateState("reading_from", m_activeConnections[i]);
 
             m_decoder.run(buff, resources);
             
