@@ -67,11 +67,13 @@ public:
 
             msg += values[i];
 
-            if(i != values.size() - 1) {
+            // if(i != values.size() - 1) {
 
-                msg += "-";
-            }
+            //     msg += "-";
+            // }
         }
+
+        msg += ";";
     }
 
     void reset() {
@@ -84,7 +86,10 @@ public:
 
     std::string getMessage() {
 
-        return msg;
+        std::string temp = msg;
+        temp.pop_back();
+
+        return temp;
     }
 
     std::string getScaler(std::string name) {

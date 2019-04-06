@@ -42,7 +42,7 @@ class MsgParser {
         this.msg += name + "=" + val + ";";
     }
 
-    encode(name, values) {
+    encodeList(name, values) {
 
         this.msg += name + "=";
 
@@ -55,6 +55,8 @@ class MsgParser {
                 this.msg += "-";
             }
         }
+
+        this.msg += ";";
     }
 
     reset() {
@@ -67,17 +69,20 @@ class MsgParser {
 
     getMessage() {
 
-        return this.msg;
+        var temp = this.msg;
+        temp = temp.substring(0, temp.length - 1);
+
+        return temp;
     }
 
     getScaler(name) {
 
-        return m_scalers[name];
+        return this.m_scalers[name];
     } 
 
    getList(name) {
 
-        return m_lists[name];
+        return this.m_lists[name];
     }
 
 };

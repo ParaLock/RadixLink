@@ -27,6 +27,7 @@ public:
 
     }
 
+
     void execute() {
 
         std::vector<Resource> res;
@@ -38,54 +39,54 @@ public:
             WebMsgParser parser;
             parser.parse(res[i].buff);
 
-            //std::string op = parser.getScaler("op");
+            std::string op = parser.getScaler("op");
 
-            //std::cout << "NodeManager: incoming msg: " << op << std::endl;
+            std::cout << "NodeManager: incoming msg: " << op << std::endl;
 
-            // if(op == "get_active_nodes") {
+            if(op == "get_active_nodes") {
                 
-            //     std::cout << "NodeManager: Processing status request." << std::endl; 
+                std::cout << "NodeManager: Processing status request." << std::endl; 
 
-            //     auto& nodes = m_netMan.getActiveNodes();
+                auto& nodes = m_netMan.getActiveNodes();
 
-            //     parser.encode("op", "active_node_list");
-            //     parser.encode("nodes", nodes);
-            // }
+                parser.encode("op", "active_node_list");
+                parser.encode("nodes", nodes);
+            }
 
-            // if(op == "create_job") {
+            if(op == "create_job") {
                 
-            //     std::string codeFn = parser.getScaler("codeFn");
-            //     std::string dataFn = parser.getScaler("dataFn");
-            //     std::string jobName = parser.getScaler("jobName");
+                std::string codeFn = parser.getScaler("codeFn");
+                std::string dataFn = parser.getScaler("dataFn");
+                std::string jobName = parser.getScaler("jobName");
 
-            //     m_jobMan.createJob(codeFn, dataFn, jobName, m_netMan.getActiveNodes());
-            // }
+                m_jobMan.createJob(codeFn, dataFn, jobName, m_netMan.getActiveNodes());
+            }
 
-            // if(op == "get_node_state") {
+            if(op == "get_node_state") {
 
-            //     auto boolToStr = [](bool b)
-            //     {
-            //         return b ? "true" : "false";
-            //     };
+                auto boolToStr = [](bool b)
+                {
+                    return b ? "true" : "false";
+                };
 
-            //     std::string writingToo = m_stateReg.getState<std::string>("writing_too");
-            //     std::string readingFrom = m_stateReg.getState<std::string>("reading_from");
+                std::string writingToo = m_stateReg.getState<std::string>("writing_too");
+                std::string readingFrom = m_stateReg.getState<std::string>("reading_from");
 
-            //     parser.encode("read_state", readingFrom);
-            //     parser.encode("write_state", writingToo);
-            // }
+                parser.encode("read_state", readingFrom);
+                parser.encode("write_state", writingToo);
+            }
 
-            // std::string msg = parser.getMessage();
+            std::string msg = parser.getMessage();
 
-            // res[i].buff.clear();
-            // res[i].buff.write((char*)msg.c_str(), msg.size());
+            res[i].buff.clear();
+            res[i].buff.write((char*)msg.c_str(), msg.size());
 
-            // std::cout << "NodeManager: status msg: " << msg << std::endl; 
+            std::cout << "NodeManager: status msg: " << msg << std::endl; 
             
-            // res[i].destManager = "net_manager";
+            res[i].destManager = "net_manager";
         }
 
-        //putResources(res, "monitor");
+        putResources(res, "monitor");
 
     }
 };

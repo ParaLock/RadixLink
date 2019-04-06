@@ -99,6 +99,8 @@ public:
 
 	std::vector<std::string>& getActiveNodes();
 
+	bool dataReady(std::string socket);
+
 	bool connectToNode(const char* target, const char* port, bool isSingleton);
 	bool disconnect(std::string nodeName);
 	

@@ -336,6 +336,23 @@ void NetworkManager::acceptConnection() {
     }
 }
 
+bool NetworkManager::dataReady(std::string nodeName) {
+
+    Connection con = m_connections.at(nodeName);
+	
+
+    u_long readableBytes = 0;
+	
+    ioctlsocket(con.socket, FIONREAD, &readableBytes);
+
+    if(readableBytes == 0) {
+
+         return false;
+    }
+
+    return true;
+}
+
 void NetworkManager::monitoringLoop() {
 
     if(m_monitorConnected) {
@@ -384,8 +401,14 @@ void NetworkManager::execute() {
 		Buffer buff;
 		std::vector<Resource> resources;
         
-        m_stateReg.updateState("reading_from", m_activeConnections[i]);
+        bool readSomeData = false;
 
+        if(dataReady(m_activeConnections[i])) {
+            
+            m_stateReg.updateState("reading_from", m_activeConnections[i]);
+            readSomeData = true;
+        }
+            
 		if(read(m_activeConnections[i], buff)) {
 
             m_decoder.run(buff, resources);
@@ -402,7 +425,10 @@ void NetworkManager::execute() {
             std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
         }
 
-        m_stateReg.updateState("reading_from", std::string("none"));
+        if(readSomeData) {
+
+            m_stateReg.updateState("reading_from", std::string("none"));
+        }
 	}
 
     std::vector<Resource> res;

@@ -111,12 +111,33 @@
             
             }
 
-            function sendRequest(name, data) { // here the data and url are not hardcoded anymore
+            function addNode(ip) {
+
+                if(ip.length == 0) {
+                    return;
+                }
+
+                if(!nodeIdByIP.hasOwnProperty(ip)) {
+
+                    var id = Math.random();
+                    var edgeId = Math.random();
+
+                    var myId = nodeIdByIP["127.0.0.1"];
+
+                    nodes.add([{id: id, label: ip, first: false, shape: 'box' }]);
+                    edges.add([{id: edgeId, from: myId, to: id}]);
+
+                    nodeIdByIP[ip] = id;
+                    edgeByFromIP[ip] = edgeId;
+                }
+            }
+
+            function sendRequest(data) { // here the data and url are not hardcoded anymore
 
                     return $.ajax({
                         type: "post",
                         url: "http://localhost:8000/",
-                        data: name + "-" + data,
+                        data: data,
                         dataType: "text",
                         contentType: "charset=utf-8",
                         success: function(data) {
@@ -131,23 +152,27 @@
                             if(op == "active_node_list") {
 
                                 var ips = parser.getList("nodes");
+                                
+                                if(ips == undefined) {
+                                    
+                                    var ip = parser.getScaler("nodes");
 
-                                for(var i = 0; i < ips.length; i++) {
+                                    console.log(parser);
 
-                                    if(!nodeIdByIP.hasOwnProperty(ips[i])) {
+                                    if(ip != undefined) {
 
-                                        var id = Math.random();
-                                        var edgeId = Math.random();
+                                        addNode(ip);
+                                    }
 
-                                        var myId = nodeIdByIP["127.0.0.1"];
+                                } else {
 
-                                        nodes.add([{id: id, label: ips[i], first: false, shape: 'box' }]);
-                                        edges.add([{id: edgeId, from: myId, to: id}]);
+                                    for(var i = 0; i < ips.length; i++) {
 
-                                        nodeIdByIP[ips[i]] = id;
-                                        edgeByFromIP[ips[i]] = edgeId;
+                                        addNode(ips[i]);
+
                                     }
                                 }
+
                             }
 
                             if(op == "node_state") {
@@ -235,11 +260,21 @@
 
                 setInterval(function() {
 
-                    sendRequest("get_node_state", "a-b-c");
+                    var parser = new MsgParser;
+                    parser.encode("op", "get_node_state");
 
-                }.bind(this), 16);
+                    sendRequest(parser.getMessage());
+
+                }.bind(this), 500);
             };
 
+            function getActiveNodes() {
+
+                var parser = new MsgParser;
+                parser.encode("op", "get_active_nodes");
+
+                sendRequest(parser.getMessage());
+            }
 
         </script>
 
@@ -255,7 +290,7 @@
 
         <div id="mynetwork"></div>
 
-        <button onclick='sendRequest("get_active_nodes", "a-b-c")'> Send Request </button>
+        <button onclick='getActiveNodes()'> Send Request </button>
 
     </body>
 
