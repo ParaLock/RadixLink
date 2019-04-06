@@ -216,9 +216,18 @@
                     // dataFn = window.prompt("Data filename: ");
                     // jobName = window.prompt("Job name: ");
 
+                    var parser = new MsgParser;
+
+                    parser.encode("op", "create_job");
+                    parser.encode("codeFn", codeFn);
+                    parser.encode("dataFn", dataFn);
+                    parser.encode("jobName", jobName);
+
+                    console.log(parser);
+
                     if(codeFn.length > 0 && dataFn.length > 0 && jobName.length > 0) {
 
-                        sendRequest(action, codeFn + "-" + dataFn + "-" + jobName);
+                        sendRequest(parser.getMessage());
                     }
                 }
             }

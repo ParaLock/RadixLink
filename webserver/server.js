@@ -56,7 +56,9 @@ const SIZE_PAYLOAD  = 4;
 
 function packRadixLinkBuffer(data) {
 	
-	data = data + '\0';
+	console.log("Outgoing: " + data);
+
+	data = data;
 
 	var currOffset = 0;
 

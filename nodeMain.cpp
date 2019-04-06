@@ -180,10 +180,7 @@ int main(int argc, char **argv) {
 
     segmenter.registerHandler("dat", [](Buffer& input, std::vector<Buffer>& segments) {
 
-        char end = NULL;
-        input.write(&end, sizeof(char));
-
-        std::string str = std::string(input.getBase());
+        std::string str = std::string(input.getBase(), input.getSize() - 1);
 
         std::vector<std::string> nums = split(str, '-');
 

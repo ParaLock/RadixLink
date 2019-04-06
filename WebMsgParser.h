@@ -22,7 +22,7 @@ public:
 
      void parse(Buffer& msg) {   
 
-        std::string incomingMsg = std::string(msg.getBase());
+        std::string incomingMsg = std::string(msg.getBase(), msg.getSize() - 1);
 
         std::cout << "WebMsgParser: message: " << incomingMsg << std::endl;
 
