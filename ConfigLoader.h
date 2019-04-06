@@ -14,7 +14,11 @@ private:
     std::map<std::string, std::string>              m_scalers;
 public:
 
-    ConfigLoader(std::string fn) {
+    ConfigLoader() {
+
+    }
+
+    bool loadFile(std::string fn) {
 
         std::string line;
         std::ifstream myfile (fn);
@@ -66,8 +70,13 @@ public:
 
             myfile.close();
 
+            return true;
+
         } else {
+
             std::cout << "Unable to open file";
+
+            return false;
         }
     }
 

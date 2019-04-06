@@ -84,7 +84,8 @@ struct Encoder {
 		} else {
 			
 			std::cout << "Encoder: File open failed!" << std::endl;
-					
+			
+			return false;
 		}
 
 		

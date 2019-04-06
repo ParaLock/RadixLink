@@ -354,15 +354,17 @@ void NetworkManager::monitoringLoop() {
         std::vector<Resource> monitorRequests;
 
         
-        read("127.0.0.1", in_buff);
+		if (read("127.0.0.1", in_buff)) {
 
-        m_decoder.run(in_buff, monitorRequests);
+			m_decoder.run(in_buff, monitorRequests);
 
-        putResources(monitorRequests, "monitor");
+			putResources(monitorRequests, "monitor");
+		}
     }
 
     if(isRunning()) {
 
+		Sleep(200);
         m_workQueue.addTask(Task(
 			"net_monitoring_thread",
 			std::bind(&NetworkManager::monitoringLoop, this)
@@ -474,10 +476,11 @@ void NetworkManager::execute() {
 
     if(isRunning()) {
 
-        Sleep(200);
+		Sleep(200);
         m_workQueue.addTask(Task(
 			m_worker,
 			std::bind(&NetworkManager::execute, this)
 		));
+
     }
 }

@@ -37,11 +37,11 @@ protected:
     std::string			  m_worker;
     StateRegistry&        m_stateReg;
 
-
+	bool				  m_isPolling;
 
 public:
 
-    Manager(IDispatcher& dispatcher, TaskQueue& taskQueue, StateRegistry& reg, std::string name) : 
+    Manager(IDispatcher& dispatcher, TaskQueue& taskQueue, StateRegistry& reg, std::string name, bool isPolling) : 
             m_dispatcher(dispatcher), 
             m_workQueue(taskQueue),
             m_stateReg(reg)
@@ -49,6 +49,8 @@ public:
 
         m_name = name;
         m_isRunning = true;
+
+		m_isPolling = isPolling;
 
         m_worker = name + "_main_thread";
 
@@ -65,7 +67,7 @@ public:
 
         resourceQueue.insert(resourceQueue.end(), resources.begin(), resources.end());
 
-        if(isRunning()) {
+        if(isRunning() && !m_isPolling) {
 
             m_workQueue.addTask(Task(
                 m_worker,
@@ -86,10 +88,13 @@ public:
 
         resVec.push_back(std::move(resource));
 
-        m_workQueue.addTask(Task(
-            m_worker,
-            std::bind(&Manager<T>::execute, this)
-        ));
+		if (isRunning() && !m_isPolling) {
+
+			m_workQueue.addTask(Task(
+				m_worker,
+				std::bind(&Manager<T>::execute, this)
+			));
+		}
     }
 
     std::string getName() {

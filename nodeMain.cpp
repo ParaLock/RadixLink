@@ -180,6 +180,9 @@ int main(int argc, char **argv) {
 
     segmenter.registerHandler("dat", [](Buffer& input, std::vector<Buffer>& segments) {
 
+        char end = NULL;
+        input.write(&end, sizeof(char));
+
         std::string str = std::string(input.getBase());
 
         std::vector<std::string> nums = split(str, '-');
@@ -210,7 +213,7 @@ int main(int argc, char **argv) {
         }
     });
 
-    StateRegistry stateReg;
+    StateRegistry stateReg(10);
     Dispatcher    dispatcher;
     TaskQueue     taskQueue;
 
@@ -240,7 +243,10 @@ int main(int argc, char **argv) {
         std::cout << "data file: ";
         std::cin >> data;
 
-        jobMan.createJob("example_dll.dll", "data.dat", "run", netMan.getActiveNodes());
+        if(!jobMan.createJob("example_dll.dll", "data.dat", "run", netMan.getActiveNodes())) {
+
+            std::cout << "App: Job creation failed!" << std::endl;
+        }
     }});
 
     primary_actions.insert({4, [&jobMan]{
@@ -261,26 +267,27 @@ int main(int argc, char **argv) {
         std::cin >> fn;
 
 
-        ConfigLoader conf(fn);
+        ConfigLoader conf;
 
-        std::vector<std::string> ipList;
-        conf.getList("IPs", ipList);
+        if(conf.loadFile(fn)) {
 
-        std::string policy;
-        conf.getScaler("policy", policy);
+            std::vector<std::string> ipList;
+            conf.getList("IPs", ipList);
 
-        //First ip address is always "this" node...
-        netMan.createServer(ipList[0], DEFAULT_PORT);
-    
-        for(int i = 1; i < ipList.size(); i++) {
+            std::string policy;
+            conf.getScaler("policy", policy);
 
-            if(!netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT, false)) {
-                std::cout << "Adding pending connection..." << std::endl;
-            }
-        }
-
+            //First ip address is always "this" node...
+            netMan.createServer(ipList[0], DEFAULT_PORT);
         
+            for(int i = 1; i < ipList.size(); i++) {
 
+                if(!netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT, false)) {
+                    std::cout << "Adding pending connection..." << std::endl;
+                }
+            }
+
+        }
     }});
 
     // std::cout << "SIZE_OF SIZE_T SIZE: " << sizeof(size_t) << std::endl;

@@ -6,6 +6,8 @@
         <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"> </script>
+
+        <script src="WebMsgParser.js"> </script>
         
         <style>
             #mynetwork {
@@ -109,11 +111,6 @@
             
             }
 
-            function prepare(tokens) {
-
-                return tokens.slice(1);
-            }
-
             function sendRequest(name, data) { // here the data and url are not hardcoded anymore
 
                     return $.ajax({
@@ -126,11 +123,14 @@
                             
                             console.log(data);
 
-                            var tokens = data.split('-');
+                            var parser = new MsgParser();
+                            parser.parse(data);
+                            
+                            var op = parser.getScaler("op");
 
-                            if(tokens[0] == "active_node_list") {
+                            if(op == "active_node_list") {
 
-                                var ips = prepare(tokens);
+                                var ips = parser.getList("nodes");
 
                                 for(var i = 0; i < ips.length; i++) {
 
@@ -150,12 +150,10 @@
                                 }
                             }
 
-                            if(tokens[0] == "node_state") {
+                            if(op == "node_state") {
                                 
-                                var states = prepare(tokens);
-
-                                var writingToo = states[0];
-                                var readingFrom = states[1];
+                                var writingToo = parser.getScaler("write_state");
+                                var readingFrom = parser.getScaler("read_state");
 
                                 if(writingToo != "none" && writingToo != "") {
 

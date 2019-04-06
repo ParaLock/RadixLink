@@ -71,13 +71,12 @@ struct Worker {
             std::unique_lock<std::mutex> lk(*mutex);
             workAvailable->wait(lk, [this]() { return this->isWorkAvailable; });
 
-            std::deque<Task> temp = work;
-            size_t wSize = temp.size();
+            size_t wSize = work.size();
 
             while(wSize > 0) {
                 
                 Task& task = work.front();
-     
+
                 task.func();
 
                 if(task.completionCallback) {
@@ -85,7 +84,7 @@ struct Worker {
                     task.completionCallback();
                 }
 
-                work.pop_front();
+				work.pop_front();
 
                 wSize--;
 

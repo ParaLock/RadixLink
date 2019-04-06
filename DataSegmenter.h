@@ -16,7 +16,7 @@ public:
         m_handlers.insert({dataType, callback});
     }
 
-    void run(std::string fn, std::string dataType, std::vector<Buffer>& segments) {
+    bool run(std::string fn, std::string dataType, std::vector<Buffer>& segments) {
 
         auto callback = m_handlers.at(dataType);
         Buffer data;
@@ -25,6 +25,12 @@ public:
 
             callback(data, segments);
 
+
+            return true;
+
+        } else {
+
+            return false;
         }
     }
 };

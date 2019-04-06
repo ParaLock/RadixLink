@@ -4,40 +4,20 @@
 #include <string>
 #include <functional>
 #include <mutex>
+#include <map>
+#include <utility>
+
+
+#include "RingBuffer.h"
 
 class StateRegistry {
 private:
 
     struct State {
-
+        
         void*                 data;
 
-        std::function<void(void*&)> deleteState;
-        std::function<void(void*&)> createState;
-
-        template<typename T>
-        void init() {
-
-            createState = [](void*& data) {
-
-                data = new T;
-            };
-
-            deleteState = [](void*& data) {
-
-                delete (T*)data;
-            };
-        }
-
-        void create() {
-
-            createState(data);
-        }
-
-        void _delete() {
-
-            deleteState(data);
-        }
+        State() {}
 
         template<typename T>
         bool copy(T& state) {
@@ -55,39 +35,92 @@ private:
         
     };
 
-    std::map<std::string, State> m_registeredStates;
-    std::mutex                   m_updateLock;
+    struct StateInfo {
+
+
+        std::function<void(void*&)> deleteState;
+        std::function<void(void*&)> createState;
+
+        template<class T>
+        void init() {
+
+            createState = [](void*& data) {
+
+                data = new T;
+            };
+
+            deleteState = [](void*& data) {
+
+                delete (T*)data;
+            };
+        }
+
+        void create(void*& data) {
+
+            createState(data);
+        }
+
+        void _delete(void*& data) {
+
+            deleteState(data);
+        }
+
+    };
+
+    std::map<std::string, std::pair<StateInfo, RingBuffer<State>>> m_registeredStates;
+    std::mutex                               m_updateLock;
+    int                                      m_maxDepth;
+
+    int                                      m_currState;
 
 public:
 
-    template<typename T>
-    void addState(std::string name) {
+    StateRegistry(int maxDepth) {
 
-        State newState;
-        newState.init<T>();
-
-        m_registeredStates.insert({name, newState});
-
-        State& state = m_registeredStates.at(name);
-
-        state.create();
-
+        m_maxDepth = maxDepth;
+        m_currState = 0;
     }
+
+    template<typename T>
+    void addState(std::string name, T defValue) {
+
+        StateInfo info;
+        info.template init<T>();
+
+		//RingBuffer<State> newRing(m_maxDepth);
+
+        m_registeredStates.insert({name, std::make_pair(info, RingBuffer<State>(m_maxDepth))});
+
+		auto& collection = m_registeredStates.at(name);
+		auto& ring = collection.second;
+
+		State stateVal;
+		info.create(stateVal.data);
+		stateVal.copy<T>(defValue);
+
+
+		ring.initAll([&info](State& slot) {
+
+			info.create(slot.data);
+
+		}, stateVal);
+	}
 
     template<typename T>
     bool updateState(std::string name, T value) {
 
         m_updateLock.lock();
         
-        State& state = m_registeredStates.at(name);
+        auto& stateCollection = m_registeredStates.at(name);
 
-        if(!state.copy<T>(value)) {
+        auto& info = stateCollection.first;
+        auto& storage = stateCollection.second;
 
-            std::cout << "StateRegistry: Bad state copy! state: " << name << std::endl; 
+        bool isFull = false;
 
-            m_updateLock.unlock();
+        storage.template putInner<T>(value, isFull);
 
-            return false;
+        if(isFull) {
         }
 
         m_updateLock.unlock();
@@ -100,14 +133,18 @@ public:
 
         m_updateLock.lock();
 
-        State& state = m_registeredStates.at(name);
+        auto& group = m_registeredStates.at(name);
 
-        T val;
-        state.getVal(val);
+        auto& buff = group.second;
+		State state;
+		T val;
 
-        m_updateLock.unlock();
+		state = buff.get();
+		state.getVal(val);
 
-        return val;
-    }
+		m_updateLock.unlock();
+
+		return val;
+	}
 
 };

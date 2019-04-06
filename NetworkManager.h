@@ -70,7 +70,7 @@ private:
 public:
 	
 	NetworkManager(IDispatcher& dispatcher, TaskQueue& queue, StateRegistry& reg, Decoder& decoder, Encoder& encoder) 
-		: Manager(dispatcher, queue, reg, "net_manager"),
+		: Manager(dispatcher, queue, reg, "net_manager", true),
 		  m_decoder(decoder),
 		  m_encoder(encoder)
 		  
@@ -82,8 +82,8 @@ public:
 		m_monitorConnected = false;
 		
 		
-		m_stateReg.addState<std::string>("writing_too");
-		m_stateReg.addState<std::string>("reading_from");
+		m_stateReg.addState<std::string>("writing_too", "none");
+		m_stateReg.addState<std::string>("reading_from", "none");
 		
 		queue.addTask(Task(
 			"net_listen_thread",

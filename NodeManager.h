@@ -7,6 +7,7 @@
 #include "IDispatcher.h"
 #include "Resource.h"
 #include "TaskQueue.h"
+#include "WebMsgParser.h"
 
 #include "NetworkManager.h"
 #include "JobManager.h"
@@ -19,7 +20,7 @@ private:
 
 public:
     NodeManager(IDispatcher& dispatcher, TaskQueue& queue, StateRegistry& reg, NetworkManager& netMan, JobManager& jobMan) 
-		: Manager(dispatcher, queue, reg, "node_manager"),
+		: Manager(dispatcher, queue, reg, "node_manager", false),
         m_netMan(netMan),
         m_jobMan(jobMan)
     {
@@ -34,70 +35,57 @@ public:
 
         for(int i = 0; i < res.size(); i++) {
 
-            std::string incomingMsg = std::string(res[i].buff.getBase());
+            WebMsgParser parser;
+            parser.parse(res[i].buff);
 
-            std::vector<std::string> tokens = split(incomingMsg, '-');
+            //std::string op = parser.getScaler("op");
 
-            std::cout << "NodeManager: incoming msg: " << incomingMsg << std::endl;
+            //std::cout << "NodeManager: incoming msg: " << op << std::endl;
 
-            std::string msg = "";
-
-            for(int j = 0; j < tokens.size(); j++) {
-
-                std::cout << "NodeManager: incoming token: " << tokens[j] << std::endl;
-            }
-
-            if(tokens[0] == "get_active_nodes") {
+            // if(op == "get_active_nodes") {
                 
-                std::cout << "NodeManager: Processing status request." << std::endl; 
+            //     std::cout << "NodeManager: Processing status request." << std::endl; 
 
-                auto& nodes = m_netMan.getActiveNodes();
+            //     auto& nodes = m_netMan.getActiveNodes();
 
-                msg = "active_node_list-";
+            //     parser.encode("op", "active_node_list");
+            //     parser.encode("nodes", nodes);
+            // }
 
-                for(int j = 0; j < nodes.size(); j++) {
+            // if(op == "create_job") {
+                
+            //     std::string codeFn = parser.getScaler("codeFn");
+            //     std::string dataFn = parser.getScaler("dataFn");
+            //     std::string jobName = parser.getScaler("jobName");
 
-                    msg += nodes[j];
+            //     m_jobMan.createJob(codeFn, dataFn, jobName, m_netMan.getActiveNodes());
+            // }
 
-                    if(j != nodes.size() - 1) {
+            // if(op == "get_node_state") {
 
-                        msg += "-";
-                    }
-                }
-            }
+            //     auto boolToStr = [](bool b)
+            //     {
+            //         return b ? "true" : "false";
+            //     };
 
-            if(tokens[0] == "create_job") {
+            //     std::string writingToo = m_stateReg.getState<std::string>("writing_too");
+            //     std::string readingFrom = m_stateReg.getState<std::string>("reading_from");
 
-                m_jobMan.createJob(tokens[1], tokens[2], tokens[3], m_netMan.getActiveNodes());
-            }
+            //     parser.encode("read_state", readingFrom);
+            //     parser.encode("write_state", writingToo);
+            // }
 
-            if(tokens[0] == "get_node_state") {
+            // std::string msg = parser.getMessage();
 
-                auto boolToStr = [](bool b)
-                {
-                    return b ? "true" : "false";
-                };
+            // res[i].buff.clear();
+            // res[i].buff.write((char*)msg.c_str(), msg.size());
 
-                std::string writingToo = m_stateReg.getState<std::string>("writing_too");
-                std::string readingFrom = m_stateReg.getState<std::string>("reading_from");
-
-                msg = "node_state-";
-                msg += writingToo;
-                msg += "-";
-                msg += readingFrom;
-            }
-
-            res[i].buff.clear();
-            res[i].buff.write((char*)msg.c_str(), msg.size());
-
-
-            std::cout << "NodeManager: status msg: " << msg << std::endl; 
+            // std::cout << "NodeManager: status msg: " << msg << std::endl; 
             
-
-            res[i].destManager = "net_manager";
+            // res[i].destManager = "net_manager";
         }
 
-        putResources(res, "monitor");
+        //putResources(res, "monitor");
 
     }
 };
