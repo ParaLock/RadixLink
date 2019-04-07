@@ -396,16 +396,20 @@ std::vector<std::string>& NetworkManager::getActiveNodes() {
 
 void NetworkManager::execute() {
 
+        
+    bool readSomeData = false;
+    bool writeSomeData = false;
+
 	for(int i = 0; i < m_activeConnections.size(); i++) {
 
 		Buffer buff;
 		std::vector<Resource> resources;
         
-        bool readSomeData = false;
 
         if(dataReady(m_activeConnections[i])) {
             
             m_stateReg.updateState("reading_from", m_activeConnections[i]);
+
             readSomeData = true;
         }
             
@@ -423,11 +427,6 @@ void NetworkManager::execute() {
         } else {
 
             std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
-        }
-
-        if(readSomeData) {
-
-            m_stateReg.updateState("reading_from", std::string("none"));
         }
 	}
 
@@ -480,9 +479,13 @@ void NetworkManager::execute() {
                 std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
             }
 
-            m_stateReg.updateState("writing_too", std::string("none"));
+            writeSomeData = true;
 
+            //m_stateReg.updateState("writing_too", std::string("stopped"));
+            
         }
+
+        //m_stateReg.updateState("writing_too", std::string("stopped"));
     }
 
     for(int i = 0; i < targeted.size(); i++) {
@@ -491,13 +494,22 @@ void NetworkManager::execute() {
 
         m_stateReg.updateState("writing_too", targets[i]);
 
-
         if(!write(targets[i], targeted[i])) {
             
             std::cout << "NetManager: node " << targets[i] << " communication failure... " << std::endl;
         }
 
-        m_stateReg.updateState("writing_too", std::string("none"));
+        writeSomeData = true;
+    }
+
+    if(readSomeData) {
+
+        m_stateReg.updateState("reading_from", std::string("stopped"));
+    }
+
+    if(writeSomeData) {
+
+        m_stateReg.updateState("writing_too", std::string("stopped"));
     }
 
     if(isRunning()) {

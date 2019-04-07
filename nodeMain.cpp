@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
         }
     });
 
-    StateRegistry stateReg(10);
+    StateRegistry stateReg(50);
     Dispatcher    dispatcher;
     TaskQueue     taskQueue;
 

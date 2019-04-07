@@ -81,18 +81,20 @@ public:
         update();
 	}
 
-	T get() {
+	bool get(T& val) {
 
 		if(empty())
 		{
-			return m_defValue;
+			val = m_defValue;
+
+			return false;
 		}
 
-		auto& val = m_items[m_tail];
+		val = m_items[m_tail];
 		m_full = false;
 		m_tail = (m_tail + 1) % m_size;
 
-		return val;
+		return true;
 	}
 
 	void reset() {

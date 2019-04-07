@@ -22,7 +22,7 @@ public:
 
      void parse(Buffer& msg) {   
 
-        std::string incomingMsg = std::string(msg.getBase(), msg.getSize() - 1);
+        std::string incomingMsg = std::string(msg.getBase(), msg.getSize());
 
         std::cout << "WebMsgParser: message: " << incomingMsg << std::endl;
 
@@ -67,10 +67,10 @@ public:
 
             msg += values[i];
 
-            // if(i != values.size() - 1) {
+            if(i != values.size() - 1) {
 
-            //     msg += "-";
-            // }
+                 msg += "-";
+            }
         }
 
         msg += ";";
@@ -87,7 +87,9 @@ public:
     std::string getMessage() {
 
         std::string temp = msg;
-        temp.pop_back();
+
+        if(temp.size() != 0 && temp[temp.size() - 1] == ';')
+            temp.pop_back();
 
         return temp;
     }

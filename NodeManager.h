@@ -30,6 +30,23 @@ public:
 
     void execute() {
 
+        auto writeBack = [this](Resource& res, WebMsgParser& parser) {
+
+                std::string msg = parser.getMessage();
+
+                res.buff.clear();
+                res.buff.write((char*)msg.c_str(), msg.size());
+
+                std::cout << "NodeManager: status msg: " << msg << std::endl; 
+                
+                res.destManager = "net_manager";
+                
+                std::vector<Resource> temp = {res};
+                
+                putResources(temp, "monitor");    
+            
+        };
+
         std::vector<Resource> res;
 
         getResources(5, res, "monitor");
@@ -41,15 +58,18 @@ public:
 
             std::string op = parser.getScaler("op");
 
+            std::string newOp = "result";
+            std::string status = "none";
+
             std::cout << "NodeManager: incoming msg: " << op << std::endl;
 
             if(op == "get_active_nodes") {
-                
-                std::cout << "NodeManager: Processing status request." << std::endl; 
-
+            
                 auto& nodes = m_netMan.getActiveNodes();
 
-                parser.encode("op", "active_node_list");
+                parser.reset();
+
+                newOp = "active_node_list";
                 parser.encode("nodes", nodes);
             }
 
@@ -59,34 +79,53 @@ public:
                 std::string dataFn = parser.getScaler("dataFn");
                 std::string jobName = parser.getScaler("jobName");
 
-                m_jobMan.createJob(codeFn, dataFn, jobName, m_netMan.getActiveNodes());
+                if(!m_jobMan.createJob(codeFn, dataFn, jobName, m_netMan.getActiveNodes())) {
+
+                    status = "failed";
+                } else {
+
+                    status = "success";
+                }
+
+
             }
 
             if(op == "get_node_state") {
 
-                auto boolToStr = [](bool b)
-                {
-                    return b ? "true" : "false";
-                };
+                std::string writingToo = "";
+                std::string readingFrom = "";
 
-                std::string writingToo = m_stateReg.getState<std::string>("writing_too");
-                std::string readingFrom = m_stateReg.getState<std::string>("reading_from");
+                m_stateReg.getState<std::string>("reading_from", readingFrom);
+                m_stateReg.getState<std::string>("writing_too", writingToo);
 
+                parser.reset();
+
+                newOp = "node_state";
                 parser.encode("read_state", readingFrom);
                 parser.encode("write_state", writingToo);
+
             }
 
-            std::string msg = parser.getMessage();
+            if(op == "write_result") {
+                
+                std::string id = parser.getScaler("jobID");
 
-            res[i].buff.clear();
-            res[i].buff.write((char*)msg.c_str(), msg.size());
+                unsigned int jobID = std::stoul(id);
 
-            std::cout << "NodeManager: status msg: " << msg << std::endl; 
+                if(!m_jobMan.writeJobResultToDisk(jobID)) {
+
+                    status = "failed";
+                } else {
+
+                    status = "none";
+                }
+
+            }
+
+            parser.encode("op", newOp);
+            parser.encode("status", status);
             
-            res[i].destManager = "net_manager";
+            writeBack(res[i], parser);
         }
-
-        putResources(res, "monitor");
-
     }
 };

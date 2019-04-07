@@ -38,6 +38,18 @@
                 background-color: grey;
             }
 
+            
+            div {
+
+                display: inline-block;
+                float:left;
+            }
+
+            hr { 
+                width: 100%;
+                margin-left: auto;
+                margin-right: auto;
+            }
         </style>
         <script>
 
@@ -48,6 +60,19 @@
             nodesToReset = [];
 
             currentlyActiveNodes = [];
+
+            //Yup.. This is a pretty ugly hack.. :(
+            readStopped = false;
+            writeStopped = false;
+
+            jobInProgress = false;
+
+            function writeLog(text) {
+
+                var oldLog = $("#log").text();
+
+                $("#log").text(oldLog + text + '\n');
+            }
 
             function resetVisualization() {
 
@@ -117,7 +142,10 @@
                     return;
                 }
 
+
                 if(!nodeIdByIP.hasOwnProperty(ip)) {
+                    
+                    writeLog("New Node Detected: " + ip);
 
                     var id = Math.random();
                     var edgeId = Math.random();
@@ -131,6 +159,14 @@
                     edgeByFromIP[ip] = edgeId;
                 }
             }
+
+            function isIPAddress(ipaddress) {  
+
+                if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {  
+                    return true;
+                }  
+                return false;
+            }  
 
             function sendRequest(data) { // here the data and url are not hardcoded anymore
 
@@ -148,6 +184,23 @@
                             parser.parse(data);
                             
                             var op = parser.getScaler("op");
+
+                            if(op == "result") {
+
+                                var status = parser.getScaler("status");
+
+                                if(status == "failed") {
+                                    
+                                    writeLog("Node Operation Failed");
+                                    
+                                } else if (status == "success"){
+                                    
+                                    writeLog("Node Operation Completed Successfully");
+                                }
+
+                                jobInProgress = false;
+
+                            }
 
                             if(op == "active_node_list") {
 
@@ -180,19 +233,35 @@
                                 var writingToo = parser.getScaler("write_state");
                                 var readingFrom = parser.getScaler("read_state");
 
-                                if(writingToo != "none" && writingToo != "") {
+                                if(isIPAddress(writingToo)) {
 
                                     visualizeIO(writingToo, "#70db6d", "#0080ff", "Writing...");
+
+                                    writeLog("Writing to Node: " + writingToo);
                                 }
                                 
-                                if(readingFrom != "none" && readingFrom != "") {
+                                if(isIPAddress(readingFrom)) {
 
                                     visualizeIO(readingFrom, "#0080ff", "#70db6d", "Reading...");
+
+                                    writeLog("Reading from Node: " + readingFrom);
                                 }
 
+                                if(writingToo == "stopped") {
 
-                                if(writingToo == "none" && readingFrom == "none") {
+                                    writeStopped = true;
+                                }
+
+                                if(readingFrom == "stopped") {
+
+                                    readStopped = true;
+                                }
+
+                                if(writeStopped && readStopped) {
                                     
+                                    writeStopped = false;
+                                    readStopped = false;
+
                                     resetVisualization();
                                 }
                             }  
@@ -208,13 +277,14 @@
 
                 if(action == "create_job") {
 
+                    if(jobInProgress) {
+                        return;
+                    }
+
+
                     var codeFn = "example_dll.dll";
                     var dataFn = "data.dat";
                     var jobName = "run";
-
-                    // codeFn = window.prompt("Code filename: ");
-                    // dataFn = window.prompt("Data filename: ");
-                    // jobName = window.prompt("Job name: ");
 
                     var parser = new MsgParser;
 
@@ -226,9 +296,27 @@
                     console.log(parser);
 
                     if(codeFn.length > 0 && dataFn.length > 0 && jobName.length > 0) {
+                        
+                        jobInProgress = true;
+
+                        writeLog("Dispatching new Job!");
 
                         sendRequest(parser.getMessage());
                     }
+                }
+
+                if(action == "write_result") {
+
+                    var parser = new MsgParser;
+
+                    var jobID = prompt("Enter JobID: ");
+                    
+                    writeLog("Writing Job " + jobID + " Result to disk...");
+
+                    parser.encode("op", action);
+                    parser.encode("jobID", jobID);
+
+                    sendRequest(parser.getMessage());
                 }
             }
 
@@ -271,10 +359,18 @@
 
                     var parser = new MsgParser;
                     parser.encode("op", "get_node_state");
+                    
+                    console.log("TEST!" + parser.getMessage());
 
                     sendRequest(parser.getMessage());
 
                 }.bind(this), 500);
+
+                setInterval(function() {
+
+                    getActiveNodes();
+
+                }.bind(this), 2000);
             };
 
             function getActiveNodes() {
@@ -294,13 +390,25 @@
         <!-- Dropdown from W3 schools -->
         <div id="dropdown" class="dropdown">
             <a onclick="ctxMenuClick('create_job')" class="dropdownItem" >Create Job</a>
-            <a onclick="ctxMenuClick('test_state')" class="dropdownItem" >Get Job Result</a>
+            <a onclick="ctxMenuClick('show_result')" class="dropdownItem" >Show Job Result</a>
+            <a onclick="ctxMenuClick('write_result')" class="dropdownItem" >Write Job Result to File</a>
         </div>
 
         <div id="mynetwork"></div>
 
-        <button onclick='getActiveNodes()'> Send Request </button>
+        <fieldset>
 
+            <div id="log_container"> 
+
+                    <h2> Activity Log </h2>
+
+                    <hr>
+
+                    <pre id="log"> </pre>
+
+
+            </div>
+        </fieldset>
     </body>
 
 

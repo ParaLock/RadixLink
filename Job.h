@@ -25,7 +25,7 @@ struct Job {
 	bool        _hasData;
 	bool        _hasJob;
 	bool        _hasResult;
-
+	bool 		_hasRun;
 	bool       _isRemoteInstance; 
 
 	Job() {
@@ -34,6 +34,8 @@ struct Job {
 		_hasData = false;
 		_hasJob  = false;
 		_hasResult = false;
+		_hasRun = false;
+
 		
 		_isRemoteInstance = false;
 
@@ -58,6 +60,9 @@ struct Job {
 			} else {
 
 				m_results.push_back(resource);
+
+				combineResults();
+
 			}
 
 		} else if(resource.type == RESOURCE_TYPE_CODE) {
@@ -129,15 +134,15 @@ struct Job {
 		
 		FreeLibrary(dllHandle);
 		
-
 		return true;
 	}
 
 	bool combineResults() {
 
-
-		if(isRunnable() && getNumSegments() == getNumResults()) {
+		if(!_isRemoteInstance && getNumSegments() == getNumResults()) {
 			
+			std::cout << "Job:  Combining Results!" << std::endl;
+
 			HMODULE dllHandle = LoadLibraryA(m_codeFn.c_str());
 
 			if(dllHandle == NULL) {
@@ -161,13 +166,19 @@ struct Job {
 				temp.push_back(&m_results[i].buff);
 			}
 
+			m_result.buff.clear();
 			func(temp, m_result.buff);
 
+			_hasRun = true;
 		}
 
 		return true;
 	}
 	
+	bool hasRun() {
+		return _hasRun;
+	}
+
 	bool isComplete() {
 		
 		return _isComplete;

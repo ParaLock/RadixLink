@@ -129,7 +129,7 @@ public:
     }
 
     template<typename T>
-    T getState(std::string name) {
+    bool getState(std::string name, T& out) {
 
         m_updateLock.lock();
 
@@ -137,14 +137,15 @@ public:
 
         auto& buff = group.second;
 		State state;
-		T val;
+		
+        bool isEmpty = false;
 
-		state = buff.get();
-		state.getVal(val);
+        isEmpty = buff.get(state);
+		state.getVal(out);
 
 		m_updateLock.unlock();
 
-		return val;
+		return isEmpty;
 	}
 
 };

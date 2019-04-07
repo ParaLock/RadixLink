@@ -72,6 +72,8 @@ class MsgParser {
         var temp = this.msg;
         temp = temp.substring(0, temp.length - 1);
 
+        console.log("SENT MESSAGE" + temp);
+
         return temp;
     }
 

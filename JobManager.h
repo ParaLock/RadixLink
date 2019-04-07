@@ -18,11 +18,6 @@ public:
           m_segmentor(segmentor) 
     {
 
-        taskQueue.addTask(Task(
-			"jobman_main_thread",
-			std::bind(&JobManager::execute, this)
-        ));
-
     }
 
     void execute() {
@@ -80,18 +75,6 @@ public:
                 this->putResources(temp, "primary");
             }
         }
-
-        for (auto it = m_currentOutgoingJobs.begin(); it != m_currentOutgoingJobs.end(); it++ ) {
-            
-            //In this case, the job is complete if all prereqs have been satisfied.
-            if(it->second.isRunnable()) {
-
-                //std::cout << "JobManager: Job Complete: " << std::endl;
-            }
-
-            it->second.combineResults();
-
-        }
     }
 
     void printJobResults(int jobID) {
@@ -105,6 +88,36 @@ public:
         for(int i = 0; i < results.size(); i++) {
             results[i].buff.print();
         }
+    }
+
+    bool writeJobResultToDisk(unsigned int jobID) {
+
+        std::cout << "Writing result of job " << jobID << " to disk! "<< std::endl;
+
+        if(m_currentOutgoingJobs.find(jobID) == m_currentOutgoingJobs.end()) {
+
+            std::cout << "JobManager: unknown job: " << jobID << std::endl;
+
+            return false;
+        }
+
+        Job& job = m_currentOutgoingJobs.at(jobID);
+
+        std::ofstream binFile(std::to_string(jobID) + "_final_result", std::ios::out | std::ios::binary);
+        
+        if (binFile.is_open()) {
+            
+            binFile.write(job.m_result.buff.getBase(), job.m_result.buff.getSize());
+
+            return true;
+
+        } else {
+
+            std::cout << "JobManager: Failed to write result to disk!" << std::endl;
+
+            return false;
+        }
+
     }
 
     bool createJob(std::string codeFn, std::string dataFn, std::string jobName, std::vector<std::string> availableNodes) {
