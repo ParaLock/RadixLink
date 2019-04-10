@@ -7,29 +7,37 @@ var net = require('net');
 
 var app = express();
 
-var port = 8000;
-var serverUrl = "localhost";
-
-var requestQueue = [];
-
-console.log("Starting web server at " + serverUrl + ":" + port);
-
-app.use(function(req, res, next) {
-
-	res.header("Access-Control-Allow-Origin", "*");
-	res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-
-	next();
-
-});
-
-
+var server = require('http').Server(app);
+var io = require('socket.io').listen(server);
 
 var client = new net.Socket();
-client.connect(27016, '127.0.0.1', function() {
-	console.log('Connected');
+
+var webSocket = {};
+
+var port = 3000;
+
+server.listen(port);
+
+
+io.on('connection', function (socket) {
+
+	console.log("Web Socket Connected!");
+
+	socket.on('request', function (data) {
+
+		client.write(packRadixLinkBuffer(data));
+		
+	});
+
+	webSocket = socket;
 
 });
+
+client.connect(27016, '127.0.0.1', function() {
+
+	console.log("Client Connected!");
+});
+
 
 client.on('data', function(data) {
 
@@ -39,13 +47,8 @@ client.on('data', function(data) {
 		var str = unpackRadixLinkBuffer(data);
 
 		console.log(str);
-		
-		if(requestQueue.length == 1) {
-			var req = requestQueue.shift();
 
-			req.setHeader('Content-Type', 'charset=utf-8');
-			req.end(str);
-		}
+		webSocket.emit("result", str);
 	}
 });
 
@@ -108,16 +111,5 @@ function unpackRadixLinkBuffer(buffer) {
 
 }
 
-app.post('/', function(req, res, next) {
+// app.post('/', function(req, res, next) {});
 
-	req.on('data', function (chunk) {
-
-		client.write(packRadixLinkBuffer(chunk.toString()));
-		
-		if(requestQueue.length == 0)
-			requestQueue.push(res);
-
-	});
-});
-
-app.listen(port)

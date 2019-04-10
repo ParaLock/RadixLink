@@ -14,6 +14,10 @@ class MsgParser {
         
         for(var i = 0; i < tokens.length; i++) {
 
+            if(tokens[i].length == 1) {
+                continue;
+            }
+
             var keyVals = tokens[i].split('=');
             var listVals = keyVals[1].split('-');
             
@@ -23,7 +27,7 @@ class MsgParser {
 
                 for(var j = 0; j < listVals.length; j++) {
 
-                    list.push(listVals[i]);
+                    list.push(listVals[j]);
                 }
 
                 this.m_lists[keyVals[0]] = list;

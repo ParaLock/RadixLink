@@ -51,7 +51,11 @@
                 margin-right: auto;
             }
         </style>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+        
         <script>
+
+            socket = io.connect('http://127.0.0.1:3000');
 
             nodeIdByIP = {};
             edgeByFromIP = {};
@@ -66,6 +70,17 @@
             writeStopped = false;
 
             jobInProgress = false;
+
+            
+            socket.on('result', function (data) {
+                
+                handleResponse(data);
+            });
+
+            function sendRequest(data) {
+
+                socket.emit('request', data);
+            }
 
             function writeLog(text) {
 
@@ -142,7 +157,6 @@
                     return;
                 }
 
-
                 if(!nodeIdByIP.hasOwnProperty(ip)) {
                     
                     writeLog("New Node Detected: " + ip);
@@ -168,118 +182,100 @@
                 return false;
             }  
 
-            function sendRequest(data) { // here the data and url are not hardcoded anymore
+        function handleResponse(data) {
+                
+                console.log(data);
 
-                    return $.ajax({
-                        type: "post",
-                        url: "http://localhost:8000/",
-                        data: data,
-                        dataType: "text",
-                        contentType: "charset=utf-8",
-                        success: function(data) {
-                            
-                            console.log(data);
+                var parser = new MsgParser();
+                parser.parse(data);
+                
+                var op = parser.getScaler("op");
 
-                            var parser = new MsgParser();
-                            parser.parse(data);
-                            
-                            var op = parser.getScaler("op");
+                if(op == "result") {
 
-                            if(op == "result") {
+                    var status = parser.getScaler("status");
 
-                                var status = parser.getScaler("status");
+                    if(status == "failed") {
+                        
+                        writeLog("Node Operation Failed");
+                        
+                    } else if (status == "success"){
+                        
+                        writeLog("Node Operation Completed Successfully");
+                    }
 
-                                if(status == "failed") {
-                                    
-                                    writeLog("Node Operation Failed");
-                                    
-                                } else if (status == "success"){
-                                    
-                                    writeLog("Node Operation Completed Successfully");
-                                }
+                    jobInProgress = false;
 
-                                jobInProgress = false;
+                }
 
-                            }
+                if(op == "active_node_list") {
 
-                            if(op == "active_node_list") {
+                    var ips = parser.getList("nodes");
+                    
+                    if(ips == undefined) {
+                        
+                        var ip = parser.getScaler("nodes");
 
-                                var ips = parser.getList("nodes");
-                                
-                                if(ips == undefined) {
-                                    
-                                    var ip = parser.getScaler("nodes");
+                        if(ip != undefined) {
 
-                                    console.log(parser);
+                            addNode(ip);
+                        }
 
-                                    if(ip != undefined) {
+                    } else {
+                        
+                        for(var i = 0; i < ips.length; i++) {
 
-                                        addNode(ip);
-                                    }
-
-                                } else {
-
-                                    for(var i = 0; i < ips.length; i++) {
-
-                                        addNode(ips[i]);
-
-                                    }
-                                }
-
-                            }
-
-                            if(op == "node_state") {
-                                
-                                var writingToo = parser.getScaler("write_state");
-                                var readingFrom = parser.getScaler("read_state");
-
-                                if(isIPAddress(writingToo)) {
-
-                                    visualizeIO(writingToo, "#70db6d", "#0080ff", "Writing...");
-
-                                    writeLog("Writing to Node: " + writingToo);
-                                }
-                                
-                                if(isIPAddress(readingFrom)) {
-
-                                    visualizeIO(readingFrom, "#0080ff", "#70db6d", "Reading...");
-
-                                    writeLog("Reading from Node: " + readingFrom);
-                                }
-
-                                if(writingToo == "stopped") {
-
-                                    writeStopped = true;
-                                }
-
-                                if(readingFrom == "stopped") {
-
-                                    readStopped = true;
-                                }
-
-                                if(writeStopped && readStopped) {
-                                    
-                                    writeStopped = false;
-                                    readStopped = false;
-
-                                    resetVisualization();
-                                }
-                            }  
-
-                        }.bind(this),
-                        error: function(a, b, c) {
+                            addNode(ips[i]);
 
                         }
-                    });
-            }
+                    }
+
+                }
+
+                if(op == "node_state") {
+                    
+                    var writingToo = parser.getScaler("write_state");
+                    var readingFrom = parser.getScaler("read_state");
+
+                    if(isIPAddress(writingToo)) {
+
+                        visualizeIO(writingToo, "#70db6d", "#0080ff", "Writing...");
+
+                        writeLog("Writing to Node: " + writingToo);
+                    }
+                    
+                    if(isIPAddress(readingFrom)) {
+
+                        visualizeIO(readingFrom, "#0080ff", "#70db6d", "Reading...");
+
+                        writeLog("Reading from Node: " + readingFrom);
+                    }
+
+                    if(writingToo == "stopped") {
+
+                        writeStopped = true;
+                    }
+
+                    if(readingFrom == "stopped") {
+
+                        readStopped = true;
+                    }
+
+                    if(writeStopped && readStopped) {
+                        
+                        writeStopped = false;
+                        readStopped = false;
+
+                        resetVisualization();
+                    }
+                }  
+
+            };
+
             
             function ctxMenuClick(action) {
 
                 if(action == "create_job") {
-
-                    if(jobInProgress) {
-                        return;
-                    }
 
 
                     var codeFn = "example_dll.dll";
@@ -292,8 +288,6 @@
                     parser.encode("codeFn", codeFn);
                     parser.encode("dataFn", dataFn);
                     parser.encode("jobName", jobName);
-
-                    console.log(parser);
 
                     if(codeFn.length > 0 && dataFn.length > 0 && jobName.length > 0) {
                         
@@ -342,8 +336,6 @@
 
                 network.on("click", function (params) {
 
-                    console.log(params);
-
                     if(params.nodes.length > 0) {
 
                         $("#dropdown").css({ 'display': 'inline-block', 'top': event.clientY + "px", 'left': event.clientX + "px" });
@@ -360,8 +352,6 @@
                     var parser = new MsgParser;
                     parser.encode("op", "get_node_state");
                     
-                    console.log("TEST!" + parser.getMessage());
-
                     sendRequest(parser.getMessage());
 
                 }.bind(this), 500);

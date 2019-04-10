@@ -115,6 +115,7 @@ public:
                 if(!m_jobMan.writeJobResultToDisk(jobID)) {
 
                     status = "failed";
+
                 } else {
 
                     status = "none";

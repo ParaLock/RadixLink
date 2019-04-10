@@ -381,7 +381,7 @@ void NetworkManager::monitoringLoop() {
 
     if(isRunning()) {
 
-		Sleep(200);
+		Sleep(100);
         m_workQueue.addTask(Task(
 			"net_monitoring_thread",
 			std::bind(&NetworkManager::monitoringLoop, this)
