@@ -4,7 +4,6 @@
 
 #include "NetworkManager.h"
 #include "JobManager.h"
-#include "DataSegmenter.h"
 #include "ConfigLoader.h"
 #include "TaskQueue.h"
 #include "NodeManager.h"
@@ -13,7 +12,6 @@
 #include <iostream>
 
 int main(int argc, char **argv) {
-
 
     WSADATA wsaData;
 
@@ -31,7 +29,6 @@ int main(int argc, char **argv) {
  
     Encoder encoder;
     Decoder decoder;
-    DataSegmenter segmenter;
 
     decoder.registerHandler(RESOURCE_TYPE_CODE, [](EncoderHeader* header, char* payload, Resource& resource) {
 
@@ -177,45 +174,12 @@ int main(int argc, char **argv) {
 
     });
 
-
-    segmenter.registerHandler("dat", [](Buffer& input, std::vector<Buffer>& segments) {
-
-        std::string str = std::string(input.getBase(), input.getSize());
-
-        std::vector<std::string> nums = split(str, '-');
-
-        for(int i = 0; i < nums.size(); i++) {
-
-            std::cout << "Segmenter: segment value: " << std::stoull(nums[i]) << std::endl;
-        }
-
-
-        int count = 0;
-
-        for(int i = 0; i < nums.size() / 2; i++) {
-
-            segments.push_back(Buffer());
-        }
-
-        for(int i = 0; i < segments.size(); i++) {
-
-            for(int j = 0; j < 2; j++) {
-
-                unsigned long long data = std::stoull(nums[count]);
-                auto& buff = segments[i];
-                buff.write((char*)&data, sizeof(unsigned long long));
-
-                count++;
-            }
-        }
-    });
-
     StateRegistry stateReg(50);
     Dispatcher    dispatcher;
     TaskQueue     taskQueue;
 
     NetworkManager netMan(dispatcher, taskQueue, stateReg, decoder, encoder);
-    JobManager     jobMan(dispatcher, taskQueue, stateReg, segmenter);
+    JobManager     jobMan(dispatcher, taskQueue, stateReg);
     NodeManager    nodeMan(dispatcher, taskQueue, stateReg, netMan, jobMan);
 
     std::map<int, std::function<void()>> primary_actions;

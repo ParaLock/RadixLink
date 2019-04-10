@@ -35,3 +35,37 @@ __stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)
 
     finalResult.write((char*)&sum, sizeof(unsigned long long));
 }
+
+__stdcall void segmentData(Buffer& input, std::vector<Buffer>& segments) {
+
+    std::string str = std::string(input.getBase(), input.getSize());
+
+    std::cout << "Segmentor: input: " << str << std::endl;
+
+    std::vector<std::string> nums = split(str, '-');
+
+    for(int i = 0; i < nums.size(); i++) {
+
+        std::cout << "Segmenter: segment value: " << std::stoull(nums[i]) << std::endl;
+    }
+
+    int count = 0;
+
+    for(int i = 0; i < nums.size() / 2; i++) {
+
+        segments.push_back(Buffer());
+    }
+
+    for(int i = 0; i < segments.size(); i++) {
+
+        for(int j = 0; j < 2; j++) {
+
+            unsigned long long data = std::stoull(nums[count]);
+            auto& buff = segments[i];
+            buff.write((char*)&data, sizeof(unsigned long long));
+
+            count++;
+        }
+    }
+
+}

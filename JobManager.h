@@ -2,20 +2,18 @@
 
 #include "Manager.h"
 #include "Job.h"
-#include "DataSegmenter.h"
+#include "DllLoader.h"
 #include "Utils.h"
 
 class JobManager : public Manager<JobManager> {
 private:
 	std::map<int, Job> m_currentIncomingJobs;
     std::map<int, Job> m_currentOutgoingJobs;
-    DataSegmenter&     m_segmentor;
 
 public:
 
-	JobManager(IDispatcher& dispatcher, TaskQueue& taskQueue, StateRegistry& reg, DataSegmenter& segmentor) 
-        : Manager(dispatcher, taskQueue, reg, "job_manager", false),
-          m_segmentor(segmentor) 
+	JobManager(IDispatcher& dispatcher, TaskQueue& taskQueue, StateRegistry& reg) 
+        : Manager(dispatcher, taskQueue, reg, "job_manager", false)
     {
 
     }
@@ -135,82 +133,99 @@ public:
 
         std::cout << "JobManager: segmenting data..." << std::endl;
 
-        if(m_segmentor.run(dataFn, split(dataFn, '.')[1], segments)) {
+        DllLoader dllLoader;
 
+        if(!dllLoader.load(codeFn)) {
 
-            newJob.setNumSegments(segments.size());
+            std::cout << "JobManager: Failed to load segmentor! in " << codeFn << std::endl;
 
-            std::cout << "JobManager: num segments: " << segments.size() << std::endl;
-            std::cout << "JobManager: num available nodes" << availableNodes.size() << std::endl;
+            return false; 
+        } 
 
+        Buffer jobData;
 
-            if(availableNodes.size() < segments.size()) {
-                
-                std::cout << "JobManager: Not enough nodes to process entire job..." << std::endl;
+        if(!Encoder::run(dataFn, jobData)) {
 
-                return false;
-            }
-
-            m_currentOutgoingJobs.insert({jobID, newJob});
-
-            for(int i = 0; i < segments.size(); i++) {
-
-                JobInfo info;
-
-                strcpy(info.jobName, jobName.c_str());
-        
-                Resource code_resource;
-                Resource data_resource;
-                Resource job_resource;
-                Resource result_resource;
-
-                job_resource.type          = RESOURCE_TYPE_JOB;
-                job_resource.jobID         = jobID;
-                job_resource.info          = info;
-                job_resource.destManager   = "net_manager";
-
-                strcpy(job_resource.target, availableNodes[i].c_str());
-                strcpy(data_resource.target, availableNodes[i].c_str());
-                strcpy(code_resource.target, availableNodes[i].c_str());
-                strcpy(result_resource.target, availableNodes[i].c_str());
-
-                Encoder::run(codeFn, code_resource.buff);
-
-                code_resource.type          = RESOURCE_TYPE_CODE;
-                code_resource.jobID         = jobID;
-                code_resource.codeFn        = std::to_string(jobID) + std::string(".dll");
-                code_resource.destManager   = "net_manager";
-
-                data_resource.type          = RESOURCE_TYPE_DATA;
-                data_resource.jobID         = jobID;
-                data_resource.destManager   = "net_manager";
-
-                result_resource.type        = RESOURCE_TYPE_RESULT;
-                result_resource.jobID = jobID;
-                result_resource.destManager = "net_manager";
-
-                data_resource.buff = segments[i];
-
-                std::vector<Resource> temp;
-                
-                temp.push_back(job_resource);
-                temp.push_back(data_resource);
-                temp.push_back(code_resource);
-                temp.push_back(result_resource);
-
-                putResources(temp, "primary");
-
-                std::cout << "JobManager: Job segment created for " << availableNodes[i] << std::endl;
-            }
-
-            std::cout << "JobManager: Finished creating job" << std::endl;
-
-            return true;
-
-        } else {
+            std::cout << "JobManager: Failed to open job data file: " << std::endl;
 
             return false;
         }
+
+        if(!dllLoader.call<Buffer&, std::vector<Buffer>&>("segmentData", jobData, segments)) {
+
+            std::cout << "JobManager: Failed to run job segmentor routine!" << std::endl;
+
+            return false;
+        }
+
+        newJob.setNumSegments(segments.size());
+
+        std::cout << "JobManager: num segments: " << segments.size() << std::endl;
+        std::cout << "JobManager: num available nodes" << availableNodes.size() << std::endl;
+
+        if(availableNodes.size() < segments.size()) {
+            
+            std::cout << "JobManager: Not enough nodes to process entire job..." << std::endl;
+
+            return false;
+        }
+
+        m_currentOutgoingJobs.insert({jobID, newJob});
+
+        for(int i = 0; i < segments.size(); i++) {
+
+            JobInfo info;
+
+            strcpy(info.jobName, jobName.c_str());
+    
+            Resource code_resource;
+            Resource data_resource;
+            Resource job_resource;
+            Resource result_resource;
+
+            job_resource.type          = RESOURCE_TYPE_JOB;
+            job_resource.jobID         = jobID;
+            job_resource.info          = info;
+            job_resource.destManager   = "net_manager";
+
+            strcpy(job_resource.target, availableNodes[i].c_str());
+            strcpy(data_resource.target, availableNodes[i].c_str());
+            strcpy(code_resource.target, availableNodes[i].c_str());
+            strcpy(result_resource.target, availableNodes[i].c_str());
+
+            Encoder::run(codeFn, code_resource.buff);
+
+            code_resource.type          = RESOURCE_TYPE_CODE;
+            code_resource.jobID         = jobID;
+            code_resource.codeFn        = std::to_string(jobID) + std::string(".dll");
+            code_resource.destManager   = "net_manager";
+
+            data_resource.type          = RESOURCE_TYPE_DATA;
+            data_resource.jobID         = jobID;
+            data_resource.destManager   = "net_manager";
+
+            result_resource.type        = RESOURCE_TYPE_RESULT;
+            result_resource.jobID = jobID;
+            result_resource.destManager = "net_manager";
+
+            data_resource.buff = segments[i];
+
+            std::vector<Resource> temp;
+            
+            temp.push_back(job_resource);
+            temp.push_back(data_resource);
+            temp.push_back(code_resource);
+            temp.push_back(result_resource);
+
+            putResources(temp, "primary");
+
+            std::cout << "JobManager: Job segment created for " << availableNodes[i] << std::endl;
+        }
+
+        std::cout << "JobManager: Finished creating job" << std::endl;
+
+        return true;
+
     }
 	
 };

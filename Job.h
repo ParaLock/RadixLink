@@ -6,10 +6,11 @@
 #include "JobInfo.h"
 #include "Encoder.h"
 
+#include "DllLoader.h"
+
 struct Job {
 	
-	typedef void (*FUNC)(char *, size_t, Buffer& out);
-    typedef void (*CombineFunc)(std::vector<Buffer*>& results, Buffer& finalResult);
+
 
 	std::map<int, Resource>    m_resources;
 	std::vector<Resource>      m_results;
@@ -102,37 +103,20 @@ struct Job {
 
 		std::cout << std::endl;
 
-		HMODULE dllHandle = LoadLibraryA(codeRes.codeFn.c_str());
-
-		if(dllHandle == NULL) {
-			
-			std::cout << "Job: failed to load code... Error: " << GetLastError() << std::endl;
-			_hasCode = false;
-
-			return false;
-		}
-
-		FUNC func;
-
-		func = (FUNC) GetProcAddress(dllHandle, std::string(infoRes.info.jobName).c_str());
+		DllLoader dllLoader;
 		
-		if(func == NULL) {
-			
-			std::cout << "Job: function retrieval failed .. Error: " << GetLastError() << std::endl;
-			_hasCode = false;
+		if(!dllLoader.load(codeRes.codeFn.c_str())) {
 
 			return false;
 		}
 
 		std::cout << "****************************RUNNING JOB!!!!**********************" << std::endl;
 		
-		func(dataRes.buff.getBase(), dataRes.buff.getSize(), m_result.buff);
+		dllLoader.call<char*, size_t, Buffer&>("run", dataRes.buff.getBase(), dataRes.buff.getSize(), m_result.buff);
 
 		std::cout << "*****************************************************************" << std::endl;
 
 		_isComplete = true;
-		
-		FreeLibrary(dllHandle);
 		
 		return true;
 	}
@@ -143,19 +127,10 @@ struct Job {
 			
 			std::cout << "Job:  Combining Results!" << std::endl;
 
-			HMODULE dllHandle = LoadLibraryA(m_codeFn.c_str());
+			DllLoader dllLoader;
 
-			if(dllHandle == NULL) {
-				
-				std::cout << "Job: failed to load code... Error: " << GetLastError() << std::endl;
-				return false;
-			}
+			if(!dllLoader.load(m_codeFn.c_str())) {
 
-			CombineFunc func = (CombineFunc) GetProcAddress(dllHandle, "combine");
-			
-			if(func == NULL) {
-				
-				std::cout << "Job: function retrieval failed .. Error: " << GetLastError() << std::endl;
 				return false;
 			}
 
@@ -167,15 +142,18 @@ struct Job {
 			}
 
 			m_result.buff.clear();
-			func(temp, m_result.buff);
+			
+			dllLoader.call<std::vector<Buffer*>&, Buffer&>("combine", temp, m_result.buff);
 
 			_hasRun = true;
+			
 		}
 
 		return true;
 	}
 	
 	bool hasRun() {
+
 		return _hasRun;
 	}
 
