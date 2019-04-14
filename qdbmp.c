@@ -170,8 +170,6 @@ BMP* BMP_Create( uint32_t width, uint32_t height, uint16_t depth )
 		bmp->Palette = NULL;
 	}
 
-	std::cout << ".....................WRITE: IMAGE SIZE: " << bmp->Header.ImageDataSize << std::endl;
-
 	/* Allocate pixels */
 	bmp->Data = (uint8_t*) calloc( bmp->Header.ImageDataSize, sizeof( uint8_t ) );
 	if ( bmp->Data == NULL )
@@ -288,8 +286,6 @@ BMP* BMP_ReadBuff(unsigned char* src, size_t size )
 		free( bmp );
 		return NULL;
 	}
-
-	std::cout << "..................READ: IMAGE SIZE: " << bmp->Header.ImageDataSize << std::endl;
 
 	/* Read image data */
 	if ( myCopy(src, bmp->Data, bmp->Header.ImageDataSize) != bmp->Header.ImageDataSize )
@@ -664,8 +660,6 @@ int	ReadHeader( BMP* bmp, unsigned char* f )
 	if ( !ReadUSHORT( &( bmp->Header.BitsPerPixel ), f ) )	return BMP_IO_ERROR;
 	if ( !ReadUINT( &( bmp->Header.CompressionType ), f ) )	return BMP_IO_ERROR;
 	
-	printf("IMGSIZE: ");
-	
 	if ( !ReadUINT( &( bmp->Header.ImageDataSize ), f ) ) {
 
 
@@ -722,11 +716,6 @@ int	ReadUINT( uint32_t* x, unsigned char* f )
 
 	myCopy(f, little, 4);
 
-	for(int i = 0; i < 4; i++) {
-
-		printf("%x ", little[i]);
-	}
-
 	*(unsigned long int*)x = ( little[ 3 ] << 24 | little[ 2 ] << 16 | little[ 1 ] << 8 | little[ 0 ] );
 
 	return 1;
@@ -742,11 +731,6 @@ int	ReadUSHORT( uint16_t *x, unsigned char* f )
 	uint8_t little[ 2 ];	/* BMPs use 16 bit shorts */
 
 	myCopy(f, little, 2 );
-
-	for(int i = 0; i < 2; i++) {
-
-		printf("%x ", little[i]);
-	}
 
 	*(uint16_t*)x = ( little[ 1 ] << 8 | little[ 0 ] );
 
@@ -769,12 +753,6 @@ int	WriteUINT( uint32_t x, unsigned char* f )
 
 	myCopy(little, f, 4, false);
 
-	for(int i = 0; i < 4; i++) {
-
-		printf("%x ", little[i]);
-	}
-
-
 	return 1;
 }
 
@@ -791,11 +769,6 @@ int	WriteUSHORT( uint16_t x, unsigned char* f )
 	little[ 0 ] = (uint8_t)( ( x & 0x00ff ) >> 0 );
 
 	myCopy(little, f, 2, false);
-
-	for(int i = 0; i < 2; i++) {
-
-		printf("%x ", little[i]);
-	}
 
 	return 1;
 }

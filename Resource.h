@@ -12,6 +12,8 @@ struct Resource {
 	unsigned int  		jobID;
 	unsigned int        type;
 
+	unsigned int        order;
+
 	JobInfo 	info;
 	std::string codeFn;
 	std::string dataFn;
@@ -36,6 +38,8 @@ struct Resource {
 		dataFn = other.dataFn;
 
 		result = other.result;
+
+		order = other.order;
 
 		destManager = other.destManager;
 

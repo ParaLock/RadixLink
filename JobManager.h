@@ -179,6 +179,8 @@ public:
 
         m_currentOutgoingJobs.insert({jobID, newJob});
 
+        unsigned int order = 0;
+
         for(int i = 0; i < segments.size(); i++) {
 
             JobInfo info;
@@ -210,6 +212,7 @@ public:
             data_resource.type          = RESOURCE_TYPE_DATA;
             data_resource.jobID         = jobID;
             data_resource.destManager   = "net_manager";
+            data_resource.order         = order;
 
             result_resource.type        = RESOURCE_TYPE_RESULT;
             result_resource.jobID = jobID;
@@ -227,6 +230,8 @@ public:
             putResources(temp, "primary");
 
             std::cout << "JobManager: Job segment created for " << availableNodes[i] << std::endl;
+
+            order++;
         }
 
         std::cout << "JobManager: Finished creating job" << std::endl;

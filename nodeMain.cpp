@@ -77,6 +77,9 @@ int main(int argc, char **argv) {
             temp++;
         }
 
+        resource.order = *(unsigned int*)temp;
+        temp += sizeof(unsigned int);
+
         resource.buff.write(temp, header->payloadSize - sizeof(resource.target));
         
         resource.destManager = "job_manager";
@@ -147,15 +150,16 @@ int main(int argc, char **argv) {
 
     encoder.registerHandler(RESOURCE_TYPE_RESULT, [](Buffer& buff, Resource& resource) {
 
-        std::cout << "Encoder: Result section detected!" << " payload size: " << resource.buff.getSize() + sizeof(resource.target) << std::endl;
+        std::cout << "Encoder: Result section detected!" << " payload size: " << resource.buff.getSize() + sizeof(resource.target) + sizeof(resource.order) << std::endl;
 
         EncoderHeader header;
         header.type         = resource.type;
-        header.payloadSize  = resource.buff.getSize() + sizeof(resource.target);
+        header.payloadSize  = resource.buff.getSize() + sizeof(resource.target) + sizeof(resource.order);
         header.jobID        = resource.jobID;
 
         buff.write((char*)&header, sizeof(EncoderHeader));
         buff.write((char*)&resource.target, sizeof(resource.target));
+        buff.write((char*)&resource.order, sizeof(resource.order));
         buff.write(resource.buff.getBase(), resource.buff.getSize());
 
     });

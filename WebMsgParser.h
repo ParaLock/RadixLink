@@ -96,12 +96,49 @@ public:
 
     std::string getScaler(std::string name) {
 
+        auto itr = m_scalers.find(name);
+
+        if(itr == m_scalers.end()) {
+
+            return "";
+        }
+
         return m_scalers.at(name);
     } 
 
     std::vector<std::string> getList(std::string name) {
 
+        auto itr = m_scalers.find(name);
+
+        if(itr == m_scalers.end()) {
+
+            return std::vector<std::string>();
+        }
+
         return m_lists.at(name);
+    }
+
+    std::vector<std::string> get(std::string name) {
+
+        std::vector<std::string> vals;
+
+        auto itr = m_scalers.find(name);
+
+        if(itr != m_scalers.end()) {
+
+            vals.push_back(m_scalers.at(name));
+
+            return vals;
+        }
+
+        auto itr_scaler = m_lists.find(name);
+
+        if(itr_scaler != m_lists.end()) {
+
+            vals = m_lists.at(name);
+        }
+
+        return vals;
     }
 
 };

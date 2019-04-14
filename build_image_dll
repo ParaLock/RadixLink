@@ -1,0 +1,3 @@
+x86_64-w64-mingw32-g++ -c -DBUILDING_EXAMPLE_DLL qdbmp.c image_job_dll.cpp 
+
+x86_64-w64-mingw32-g++ -static-libstdc++ -static -shared -o image_job_dll.dll image_job_dll.o -Wl,--out-implib,image_job_dll.a

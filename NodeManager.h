@@ -79,7 +79,9 @@ public:
                 std::string dataFn = parser.getScaler("dataFn");
                 std::string jobName = parser.getScaler("jobName");
 
-                if(!m_jobMan.createJob(codeFn, dataFn, jobName, m_netMan.getActiveNodes())) {
+                std::vector<std::string> activeNodes = parser.get("contrib_nodes");
+
+                if(!m_jobMan.createJob(codeFn, dataFn, jobName, activeNodes)) {
 
                     status = "failed";
                 } else {

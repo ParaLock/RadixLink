@@ -59,11 +59,12 @@
 
             nodeIdByIP = {};
             edgeByFromIP = {};
+            contributingNodes = [];
 
             edgesToReset = [];
             nodesToReset = [];
 
-            currentlyActiveNodes = [];
+            selectedNode = {};
 
             //Yup.. This is a pretty ugly hack.. :(
             readStopped = false;
@@ -71,7 +72,17 @@
 
             jobInProgress = false;
 
-            
+            function deleteFromArray(array, item) {
+
+                var index = array.indexOf(item);
+                if (index !== -1) array.splice(index, 1);           
+            }
+
+            function getKeyByValue(object, value) {
+                return Object.keys(object).find(key => object[key] === value);
+            }
+
+
             socket.on('result', function (data) {
                 
                 handleResponse(data);
@@ -171,6 +182,8 @@
 
                     nodeIdByIP[ip] = id;
                     edgeByFromIP[ip] = edgeId;
+
+                    contributingNodes[ip] = true;
                 }
             }
 
@@ -272,8 +285,40 @@
 
             };
 
+            function toggleNodeContrib() {
+
+                contributingNodes[selectedNode] = !contributingNodes[selectedNode];
+
+                var target = nodes.get(nodeIdByIP[selectedNode]);
+
+                if(contributingNodes[selectedNode]) {
+
+                   
+                    target.color = {
+                        background: "#97C2FC"
+                    }
+
+                    nodes.update(target);
+
+                } else {
+
+                    target.color = {
+                        background: 'grey'
+                    }
+
+                    nodes.update(target);
+                }
+
+                network.body.emitter.emit('_dataChanged');
+                network.redraw();
+            }
             
             function ctxMenuClick(action) {
+
+                if(action == "toggle_contrib") {
+
+                    toggleNodeContrib();
+                }
 
                 if(action == "create_job") {
 
@@ -288,15 +333,34 @@
                     parser.encode("codeFn", codeFn);
                     parser.encode("dataFn", dataFn);
                     parser.encode("jobName", jobName);
+                    
+                    var contribNodes = [];
 
-                    if(codeFn.length > 0 && dataFn.length > 0 && jobName.length > 0) {
-                        
-                        jobInProgress = true;
+                    for (var node in contributingNodes) {
 
-                        writeLog("Dispatching new Job!");
+                        if (contributingNodes.hasOwnProperty(node)) {
+                            
+                            if(contributingNodes[node]) {
 
-                        sendRequest(parser.getMessage());
+                                contribNodes.push(node);
+                            }
+                        }
                     }
+
+                    if(contribNodes.length > 0) {
+
+                        parser.encodeList("contrib_nodes", contribNodes);
+
+                        if(codeFn.length > 0 && dataFn.length > 0 && jobName.length > 0) {
+                            
+                            jobInProgress = true;
+
+                            writeLog("Dispatching new Job!");
+
+                            sendRequest(parser.getMessage());
+                        }
+                    }
+
                 }
 
                 if(action == "write_result") {
@@ -311,6 +375,42 @@
                     parser.encode("jobID", jobID);
 
                     sendRequest(parser.getMessage());
+                }
+
+                hideDropdown();
+            }
+
+            function hideDropdown() {
+
+                $("#dropdown_local").css({ 'display': 'none' });
+                $("#dropdown_remote").css({ 'display': 'none' });
+            }
+
+            function displayDropdown(params) {
+
+                var local_id = nodeIdByIP["127.0.0.1"];
+
+                if(params.nodes.length > 0) {
+
+                    if(local_id == params.nodes[0]) {
+
+                        $("#dropdown_local").css({ 'display': 'inline-block', 'top': event.clientY + "px", 'left': event.clientX + "px" });
+                        $("#dropdown_remote").css({ 'display': 'none' });
+
+                        selectedNode = "127.0.0.1";
+
+                    } else {
+
+                        $("#dropdown_remote").css({ 'display': 'inline-block', 'top': event.clientY + "px", 'left': event.clientX + "px" });
+                        $("#dropdown_local").css({ 'display': 'none' });
+
+                        selectedNode = getKeyByValue(nodeIdByIP, params.nodes[0]);
+                    }
+
+                } else {
+
+                    $("#dropdown_local").css({ 'display': 'none' });
+                    $("#dropdown_remote").css({ 'display': 'none' });
                 }
             }
 
@@ -336,15 +436,7 @@
 
                 network.on("click", function (params) {
 
-                    if(params.nodes.length > 0) {
-
-                        $("#dropdown").css({ 'display': 'inline-block', 'top': event.clientY + "px", 'left': event.clientX + "px" });
-
-                    } else {
-
-                        $("#dropdown").css({ 'display': 'none' });
-                    }
-
+                    displayDropdown(params);
                 });
 
                 setInterval(function() {
@@ -378,10 +470,14 @@
     <body>
         
         <!-- Dropdown from W3 schools -->
-        <div id="dropdown" class="dropdown">
+        <div id="dropdown_local" class="dropdown">
             <a onclick="ctxMenuClick('create_job')" class="dropdownItem" >Create Job</a>
             <a onclick="ctxMenuClick('show_result')" class="dropdownItem" >Show Job Result</a>
             <a onclick="ctxMenuClick('write_result')" class="dropdownItem" >Write Job Result to File</a>
+        </div>
+
+        <div id="dropdown_remote" class="dropdown">
+                <a onclick="ctxMenuClick('toggle_contrib')" class="dropdownItem" >Toggle Contribution</a>
         </div>
 
         <div id="mynetwork"></div>

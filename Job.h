@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include "windows.h"
 
 #include "Resource.h"
@@ -134,12 +136,25 @@ struct Job {
 				return false;
 			}
 
-			std::vector<Buffer*> temp;
+			std::vector<Resource*> sortedResults;
 
 			for(int i = 0; i < m_results.size(); i++) {
 
-				temp.push_back(&m_results[i].buff);
+				sortedResults.push_back(&m_results[i]);
 			}
+
+			std::sort(sortedResults.begin(), sortedResults.end(), [](Resource* a, Resource* b) {
+				return a->order > b->order;   
+			});
+
+			std::vector<Buffer*> temp;
+
+			for(int i = 0; i < sortedResults.size(); i++) {
+
+				temp.push_back(&sortedResults[i]->buff);
+			}
+
+
 
 			m_result.buff.clear();
 			

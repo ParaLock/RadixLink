@@ -6,10 +6,6 @@ extern "C" {
     #include "qdbmp.c"
 }
 
-#define filterWidth 3
-#define filterHeight 3
-
-
 __stdcall void run(char *s, size_t size, Buffer& result)
 {
     BMP* img = BMP_ReadBuff((unsigned char*)s, size);
@@ -27,21 +23,27 @@ __stdcall void run(char *s, size_t size, Buffer& result)
 
     h = BMP_GetHeight(img);
     w = BMP_GetWidth(img);
-
     
-    #define filterWidth 3
-    #define filterHeight 3
+    
+    
+    
+   
+    #define filterWidth 5
+    #define filterHeight 5
 
     double filter[filterHeight][filterWidth] =
     {
-    -1, -1, -1,
-    -1,  8, -1,
-    -1, -1, -1
+    -1,  0,  0,  0,  0,
+    0, -2,  0,  0,  0,
+    0,  0,  6,  0,  0,
+    0,  0,  0, -2,  0,
+    0,  0,  0,  0, -1,
     };
 
-    double factor = 8.0;
+    double factor = 1.0;
     double bias = 0.0;
 
+        
     std::cout << "Segmentor: Running... Image W/H: " << h << ", " << w << std::endl;
 
 
@@ -125,7 +127,7 @@ __stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)
                 uint8_t b;
 
                 BMP_GetPixelRGB(subImgs[i], w, h, &r, &g, &b);
-                BMP_SetPixelRGB(finalImage, currOffsetW, currOffsetH, r, g, b);
+                BMP_SetPixelRGB(finalImage, w, h, r, g, b);
             }
         }
 
