@@ -11,6 +11,12 @@ struct Buffer {
 		seq = 0;
 	}
 
+	Buffer(size_t size) : data(size) {
+
+		isLast = false;
+		seq    = 0;
+	}
+
 	~Buffer() {	}
 
 	void write(char* src, unsigned int size, bool incPos = true) {

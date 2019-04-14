@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
     TaskQueue     taskQueue;
 
     NetworkManager netMan(dispatcher, taskQueue, stateReg, decoder, encoder);
-    JobManager     jobMan(dispatcher, taskQueue, stateReg);
+    JobManager     jobMan(dispatcher, taskQueue, netMan, stateReg);
     NodeManager    nodeMan(dispatcher, taskQueue, stateReg, netMan, jobMan);
 
     std::map<int, std::function<void()>> primary_actions;
@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
         std::cout << "data file: ";
         std::cin >> data;
 
-        if(!jobMan.createJob("example_dll.dll", "data.dat", "run", netMan.getActiveNodes())) {
+        if(!jobMan.createJob("image_job_dll.dll", "flower.bmp", "run", netMan.getActiveNodes())) {
 
             std::cout << "App: Job creation failed!" << std::endl;
         }

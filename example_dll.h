@@ -18,7 +18,7 @@ extern "C" {
 
 void __stdcall EXAMPLE_DLL run(char *s, size_t size, Buffer& buff);
 void __stdcall EXAMPLE_DLL combine(std::vector<Buffer*>& results, Buffer& finalResult);
-void __stdcall EXAMPLE_DLL segmentData(Buffer& data, std::vector<Buffer>& segmentsOut);
+void __stdcall EXAMPLE_DLL segmentData(int numNodes, Buffer& data, std::vector<Buffer>& segmentsOut);
 
 
 int EXAMPLE_DLL Double(int x);

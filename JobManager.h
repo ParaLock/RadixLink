@@ -4,16 +4,20 @@
 #include "Job.h"
 #include "DllLoader.h"
 #include "Utils.h"
+#include "NetworkManager.h"
 
 class JobManager : public Manager<JobManager> {
 private:
 	std::map<int, Job> m_currentIncomingJobs;
     std::map<int, Job> m_currentOutgoingJobs;
 
+    NetworkManager& m_netMan;
+
 public:
 
-	JobManager(IDispatcher& dispatcher, TaskQueue& taskQueue, StateRegistry& reg) 
-        : Manager(dispatcher, taskQueue, reg, "job_manager", false)
+	JobManager(IDispatcher& dispatcher, TaskQueue& taskQueue, NetworkManager& netMan, StateRegistry& reg) 
+        : Manager(dispatcher, taskQueue, reg, "job_manager", false), m_netMan(netMan)
+          
     {
 
     }
@@ -151,7 +155,9 @@ public:
             return false;
         }
 
-        if(!dllLoader.call<Buffer&, std::vector<Buffer>&>("segmentData", jobData, segments)) {
+        auto& activeNodes = m_netMan.getActiveNodes();
+
+        if(!dllLoader.call<int, Buffer&, std::vector<Buffer>&>("segmentData", activeNodes.size(), jobData, segments)) {
 
             std::cout << "JobManager: Failed to run job segmentor routine!" << std::endl;
 
@@ -162,6 +168,7 @@ public:
 
         std::cout << "JobManager: num segments: " << segments.size() << std::endl;
         std::cout << "JobManager: num available nodes" << availableNodes.size() << std::endl;
+
 
         if(availableNodes.size() < segments.size()) {
             

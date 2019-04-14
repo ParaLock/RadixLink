@@ -36,7 +36,7 @@ __stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)
     finalResult.write((char*)&sum, sizeof(unsigned long long));
 }
 
-__stdcall void segmentData(Buffer& input, std::vector<Buffer>& segments) {
+__stdcall void segmentData(int numNodes, Buffer& input, std::vector<Buffer>& segments) {
 
     std::string str = std::string(input.getBase(), input.getSize());
 
