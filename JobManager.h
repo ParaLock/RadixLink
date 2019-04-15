@@ -19,7 +19,7 @@ public:
         : Manager(dispatcher, taskQueue, reg, "job_manager", false), m_netMan(netMan)
           
     {
-
+        m_stateReg.addState<std::string>("running_job", "none");
     }
 
     void execute() {
@@ -122,9 +122,11 @@ public:
 
     }
 
-    bool createJob(std::string codeFn, std::string dataFn, std::string jobName, std::vector<std::string> availableNodes) {
+    bool createJob(std::string codeFn, std::string dataFn, std::string jobName, std::vector<std::string> availableNodes, int& jobIDOut) {
 
         int jobID = rand();
+
+        jobIDOut = jobID;
 
         std::cout << "Creating job: " << jobID << std::endl;
 

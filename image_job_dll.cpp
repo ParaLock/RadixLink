@@ -24,26 +24,39 @@ __stdcall void run(char *s, size_t size, Buffer& result)
     h = BMP_GetHeight(img);
     w = BMP_GetWidth(img);
     
+    BMP* processedImg = BMP_Create(w, h, BMP_GetDepth(img));
     
-    
-    
-   
+    // #define filterWidth 5
+    // #define filterHeight 5
+
+    // double filter[filterHeight][filterWidth] =
+    // {
+    // -1,  0,  0,  0,  0,
+    // 0, -2,  0,  0,  0,
+    // 0,  0,  6,  0,  0,
+    // 0,  0,  0, -2,  0,
+    // 0,  0,  0,  0, -1,
+    // };
+
+    // double factor = 2.0;
+    // double bias = 0.0;
+        
+
     #define filterWidth 5
     #define filterHeight 5
 
     double filter[filterHeight][filterWidth] =
     {
-    -1,  0,  0,  0,  0,
-    0, -2,  0,  0,  0,
-    0,  0,  6,  0,  0,
-    0,  0,  0, -2,  0,
-    0,  0,  0,  0, -1,
+    -1, -1, -1, -1,  0,
+    -1, -1, -1,  0,  1,
+    -1, -1,  0,  1,  1,
+    -1,  0,  1,  1,  1,
+    0,  1,  1,  1,  1
     };
 
     double factor = 1.0;
-    double bias = 0.0;
+    double bias = 128.0;
 
-        
     std::cout << "Segmentor: Running... Image W/H: " << h << ", " << w << std::endl;
 
 
@@ -71,7 +84,7 @@ __stdcall void run(char *s, size_t size, Buffer& result)
             blue += b * filter[filterY][filterX];
         }
 
-        BMP_SetPixelRGB(img, x, y, 
+        BMP_SetPixelRGB(processedImg, x, y, 
                                     std::min(std::max(int(factor * red + bias), 0), 255), 
                                     std::min(std::max(int(factor * green + bias), 0), 255), 
                                     std::min(std::max(int(factor * blue + bias), 0), 255));
@@ -79,13 +92,14 @@ __stdcall void run(char *s, size_t size, Buffer& result)
 
     result.resize(size);
 
-    BMP_WriteBuff(img, (unsigned char*)result.getBase(), result.getSize());
+    BMP_WriteBuff(processedImg, (unsigned char*)result.getBase(), result.getSize());
 
     f = fopen("after_effect.bmp", "wb");
     fwrite((unsigned char*)result.getBase(), sizeof(char), result.getSize(), f);
     fclose(f);
 
     BMP_Free(img);
+    BMP_Free(processedImg);
 }
 
 __stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)

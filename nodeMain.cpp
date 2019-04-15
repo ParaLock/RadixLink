@@ -208,7 +208,9 @@ int main(int argc, char **argv) {
         std::cout << "data file: ";
         std::cin >> data;
 
-        if(!jobMan.createJob("image_job_dll.dll", "flower.bmp", "run", netMan.getActiveNodes())) {
+        int jobID = -1;
+
+        if(!jobMan.createJob("image_job_dll.dll", "flower.bmp", "run", netMan.getActiveNodes(), jobID)) {
 
             std::cout << "App: Job creation failed!" << std::endl;
         }

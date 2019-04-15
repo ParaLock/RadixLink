@@ -214,7 +214,17 @@
                         
                     } else if (status == "success"){
                         
-                        writeLog("Node Operation Completed Successfully");
+                        var job = parser.get("job");
+
+                        if(job != "none") {
+
+                            writeLog("Node Operation Completed Successfully -> Job: " + parser.get("job"));
+
+                        } else {
+
+                            writeLog("Node Operation Completed Successfully");
+
+                        }
                     }
 
                     jobInProgress = false;

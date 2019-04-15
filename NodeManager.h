@@ -60,6 +60,8 @@ public:
 
             std::string newOp = "result";
             std::string status = "none";
+            std::string currJob = "none";
+
 
             std::cout << "NodeManager: incoming msg: " << op << std::endl;
 
@@ -81,12 +83,17 @@ public:
 
                 std::vector<std::string> activeNodes = parser.get("contrib_nodes");
 
-                if(!m_jobMan.createJob(codeFn, dataFn, jobName, activeNodes)) {
+                int jobID = -1;
+
+                if(!m_jobMan.createJob(codeFn, dataFn, jobName, activeNodes, jobID)) {
 
                     status = "failed";
                 } else {
 
                     status = "success";
+
+                    currJob = std::to_string(jobID);
+
                 }
 
 
@@ -126,6 +133,7 @@ public:
             }
 
             parser.encode("op", newOp);
+            parser.encode("job", currJob);
             parser.encode("status", status);
             
             writeBack(res[i], parser);
