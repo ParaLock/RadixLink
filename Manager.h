@@ -10,6 +10,8 @@
 #include <functional>
 
 
+const static unsigned int HIGH_WATER_MARK = 150;
+
 template<typename T>
 class Manager : public IManager{
 private:
@@ -65,6 +67,12 @@ public:
 
         std::vector<Resource>& resourceQueue = m_resourceGroups.at(group);
 
+        if(resourceQueue.size() >= HIGH_WATER_MARK) {
+
+            std::cout << "Manager: High water mark reached! size: " << resourceQueue.size() << std::endl; 
+        }
+
+
         resourceQueue.insert(resourceQueue.end(), resources.begin(), resources.end());
 
         if(isRunning() && !m_isPolling) {
@@ -87,6 +95,11 @@ public:
         auto& resVec = m_resourceGroups.at(groupName);
 
         resVec.push_back(std::move(resource));
+
+        if(resVec.size() >= HIGH_WATER_MARK) {
+
+            std::cout << "Manager: High water mark reached! size: " << resVec.size() << std::endl; 
+        }
 
 		if (isRunning() && !m_isPolling) {
 

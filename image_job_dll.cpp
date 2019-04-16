@@ -192,7 +192,7 @@ __stdcall void combine(
 
     std::cout << "Expanding output buffer... " << std::endl;
 
-    expandOutput(BMP_GetSizeInBytes(finalImage));
+    +(BMP_GetSizeInBytes(finalImage));
 
     char*  finalResult     = nullptr;
     size_t finalResultSize = 0;
