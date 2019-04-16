@@ -72,6 +72,7 @@ public:
             std::cout << "Manager: High water mark reached! size: " << resourceQueue.size() << std::endl; 
         }
 
+        std::cout << "Manager -> " << m_name << ": Resource Queued: Size: " << resourceQueue.size() << std::endl;
 
         resourceQueue.insert(resourceQueue.end(), resources.begin(), resources.end());
 
@@ -100,6 +101,8 @@ public:
 
             std::cout << "Manager: High water mark reached! size: " << resVec.size() << std::endl; 
         }
+
+        std::cout << "Manager -> " << m_name << ": Resource Queued: Size: " << resVec.size() << std::endl;
 
 		if (isRunning() && !m_isPolling) {
 
