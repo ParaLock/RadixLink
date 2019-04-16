@@ -101,12 +101,12 @@ __stdcall void run(
     char*   result = nullptr;
     size_t  resultSize   = 0;
     getOutput(result, resultSize);
-    
+
+    BMP_WriteBuff(processedImg, (unsigned char*)result, resultSize);
+
     FILE* f = fopen("after_run.bmp", "wb");
     fwrite((unsigned char*)result, sizeof(char), resultSize, f);
     fclose(f);
-
-    BMP_WriteBuff(processedImg, (unsigned char*)result, resultSize);
 
     BMP_Free(img);
     BMP_Free(processedImg);
@@ -140,6 +140,7 @@ __stdcall void combine(
         if(!subImg) {
 
             std::cout << "Failed to create subimage!" << std::endl;
+            std::cout << BMP_GetErrorDescription() << std::endl;
 
             return;
         }
@@ -155,6 +156,10 @@ __stdcall void combine(
 
         height += BMP_GetHeight(subImgs[i]);
         width += BMP_GetWidth(subImgs[i]);
+
+        std::cout << "Segment: Depth: " << BMP_GetDepth(subImgs[i]);
+        std::cout << "Segment: Height: " << BMP_GetHeight(subImgs[i]);
+        std::cout << "Segment: Width: " << BMP_GetWidth(subImgs[i]);
     }
 
     BMP* finalImage = BMP_Create(width, height, depth);
@@ -185,6 +190,8 @@ __stdcall void combine(
         currOffsetH += segHeight;
     }
 
+    std::cout << "Expanding output buffer... " << std::endl;
+
     expandOutput(BMP_GetSizeInBytes(finalImage));
 
     char*  finalResult     = nullptr;
@@ -192,14 +199,15 @@ __stdcall void combine(
 
     getOutput(finalResult, finalResultSize);
 
-    FILE* f = fopen("after_combine.bmp", "wb");
-    fwrite((unsigned char*)finalResult, sizeof(char), finalResultSize, f);
-    fclose(f);
-
     std::cout << "Writing combined image... " << std::endl;
     
     BMP_WriteBuff(finalImage, (unsigned char*)finalResult, finalResultSize);
     BMP_Free(finalImage);
+
+    FILE* f = fopen("after_combine.bmp", "wb");
+    fwrite((unsigned char*)finalResult, sizeof(char), finalResultSize, f);
+    fclose(f);
+
 
     for(int i = 0; i < subImgs.size(); i++) {
 
@@ -218,11 +226,15 @@ __stdcall void segmentData(int numNodes,
 
     getInput(input, inputSize);
 
+    std::cout << "Segmentor.segmentData: Size of input buffer: " << inputSize << std::endl;
+
     BMP* originalImg = BMP_ReadBuff((unsigned char*)input, inputSize);
 
     if(!originalImg) {
 
         std::cout << "Segmentor.segmentData: Failed to read image: " << BMP_GetErrorDescription() << std::endl;
+
+        return;
     }
 
     uint32_t depth  = BMP_GetDepth(originalImg);  

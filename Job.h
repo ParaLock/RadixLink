@@ -203,11 +203,9 @@ struct Job {
 				size = m_result.buff.getSize();
 			};
 
-			auto expandSegment = [&temp](size_t size, int seg) {
+			auto expandOutput = [this](size_t size) {
 			
-				Buffer* buff = temp.at(seg);
-				
-				buff->resize(buff->getSize() + size);
+				m_result.buff.resize(m_result.buff.getSize() + size);
 
 			};
 
@@ -220,10 +218,10 @@ struct Job {
 							int,
                             std::function<void(char*&, size_t&, int)>,
 							std::function<void(char*&, size_t&)>,
-                        	std::function<void(size_t, int)>,
+                        	std::function<void(size_t)>,
                             std::function<void(char*, size_t)> 
 						>
-				("combine", temp.size(), getSegment, getOutput, expandSegment, writeOutput);
+				("combine", temp.size(), getSegment, getOutput, expandOutput, writeOutput);
 
 			_hasRun = true;
 			

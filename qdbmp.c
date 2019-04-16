@@ -227,6 +227,8 @@ BMP* BMP_ReadBuff(unsigned char* src, size_t size )
 	if ( bmp == NULL )
 	{
 		BMP_LAST_ERROR_CODE = BMP_OUT_OF_MEMORY;
+
+		POS = 0;
 		return NULL;
 	}    
 
@@ -236,6 +238,8 @@ BMP* BMP_ReadBuff(unsigned char* src, size_t size )
 
 		BMP_LAST_ERROR_CODE = BMP_FILE_INVALID;
 		free( bmp );
+
+		POS = 0;
 		return NULL;
 	}
 
@@ -246,6 +250,8 @@ BMP* BMP_ReadBuff(unsigned char* src, size_t size )
 
 		BMP_LAST_ERROR_CODE = BMP_FILE_NOT_SUPPORTED;
 		free( bmp );
+
+		POS = 0;
 		return NULL;
 	}
 
@@ -257,6 +263,8 @@ BMP* BMP_ReadBuff(unsigned char* src, size_t size )
 		{
 			BMP_LAST_ERROR_CODE = BMP_OUT_OF_MEMORY;
 			free( bmp );
+
+			POS = 0;
 			return NULL;
 		}
 
@@ -265,6 +273,8 @@ BMP* BMP_ReadBuff(unsigned char* src, size_t size )
 			BMP_LAST_ERROR_CODE = BMP_FILE_INVALID;
 			free( bmp->Palette );
 			free( bmp );
+
+			POS = 0;
 			return NULL;
 		}
 	}
@@ -284,6 +294,8 @@ BMP* BMP_ReadBuff(unsigned char* src, size_t size )
 		BMP_LAST_ERROR_CODE = BMP_OUT_OF_MEMORY;
 		free( bmp->Palette );
 		free( bmp );
+
+		POS = 0;
 		return NULL;
 	}
 
@@ -294,6 +306,8 @@ BMP* BMP_ReadBuff(unsigned char* src, size_t size )
 		free( bmp->Data );
 		free( bmp->Palette );
 		free( bmp );
+
+		POS = 0;
 		return NULL;
 	}
 
@@ -325,6 +339,8 @@ void BMP_WriteBuff(BMP* bmp, unsigned char* dest, size_t size)
 	if ( WriteHeader( bmp, dest ) != BMP_OK )
 	{
 
+		POS = 0;
+
 		BMP_LAST_ERROR_CODE = BMP_IO_ERROR;
 		return;
 	}
@@ -334,6 +350,8 @@ void BMP_WriteBuff(BMP* bmp, unsigned char* dest, size_t size)
 	{
 		if ( myCopy(bmp->Palette, dest, BMP_PALETTE_SIZE, false) != BMP_PALETTE_SIZE )
 		{
+			POS = 0;
+
 			BMP_LAST_ERROR_CODE = BMP_IO_ERROR;
 			return;
 		}
@@ -344,6 +362,8 @@ void BMP_WriteBuff(BMP* bmp, unsigned char* dest, size_t size)
 	/* Write data */
 	if (myCopy(bmp->Data, dest, bmp->Header.ImageDataSize, false) != bmp->Header.ImageDataSize )
 	{
+		POS = 0;
+
 		BMP_LAST_ERROR_CODE = BMP_IO_ERROR;
 		return;
 	}
