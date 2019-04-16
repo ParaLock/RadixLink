@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 #include "Manager.h"
 #include "Job.h"
 #include "DllLoader.h"
@@ -159,7 +161,57 @@ public:
 
         auto& activeNodes = m_netMan.getActiveNodes();
 
-        if(!dllLoader.call<int, Buffer&, std::vector<Buffer>&>("segmentData", activeNodes.size(), jobData, segments)) {
+        auto getInput = [&jobData](char*& src, size_t& size) {
+
+            src = jobData.getBase();
+            size = jobData.getSize();
+        };
+
+		auto writeSegment = [&segments](char* src, size_t size, int seg) {
+
+			while (segments.size() < seg + 1) {
+
+				segments.push_back(Buffer());
+			}
+
+			Buffer& buff = segments.at(seg);
+
+			buff.write(src, size);
+		};
+        
+        auto getSegment = [&segments](char*& src, size_t& size, int seg) {
+
+			while (segments.size() < seg + 1) {
+
+				segments.push_back(Buffer());
+			}
+
+			Buffer& buff = segments.at(seg);
+
+            size = buff.getSize();
+            src  = buff.getBase();
+		};
+
+        auto expandSegment = [&segments](size_t size, int seg) {
+
+			while (segments.size() < seg + 1) {
+
+				segments.push_back(Buffer());
+			}
+
+			Buffer& buff = segments.at(seg);
+
+			buff.resize(buff.getSize() + size);
+		};
+
+        if(!dllLoader.call<
+                            int,
+                            std::function<void(char*&, size_t&)>,
+                            std::function<void(char*&, size_t&, int)>,
+                            std::function<void(size_t, int)>,
+                            std::function<void(char*, size_t, int)>
+                            >(
+			"segmentData", activeNodes.size(), getInput, getSegment, expandSegment, writeSegment)) {
 
             std::cout << "JobManager: Failed to run job segmentor routine!" << std::endl;
 

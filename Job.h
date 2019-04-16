@@ -91,7 +91,7 @@ struct Job {
 	}
 	
 	bool execute() {
-	
+
 		Resource& codeRes = m_resources.at(RESOURCE_TYPE_CODE);
 		Resource& dataRes = m_resources.at(RESOURCE_TYPE_DATA);
 		Resource& infoRes = m_resources.at(RESOURCE_TYPE_JOB);
@@ -99,22 +99,53 @@ struct Job {
 		std::cout << "Job: filename: " << codeRes.codeFn << std::endl;
 		std::cout << "Job: job name: ";
 
-		for(int i = 0; i < 20; i++) {
+		for (int i = 0; i < 20; i++) {
 			std::cout << infoRes.info.jobName[i];
 		}
 
 		std::cout << std::endl;
 
 		DllLoader dllLoader;
-		
-		if(!dllLoader.load(codeRes.codeFn.c_str())) {
+
+		if (!dllLoader.load(codeRes.codeFn.c_str())) {
 
 			return false;
 		}
 
 		std::cout << "****************************RUNNING JOB!!!!**********************" << std::endl;
+
+
+		auto getInput = [&dataRes](char*& src, size_t& size) {
+
+			src = dataRes.buff.getBase();
+			size = dataRes.buff.getSize();
+		};
+
+		auto expandOutput = [this](size_t size) {
+
+			m_result.buff.resize(m_result.buff.getSize() + size);
+		};
+
+		auto writeOutput = [this](char* src, size_t size) {
+
+			m_result.buff.write(src, size);
+		};
 		
-		dllLoader.call<char*, size_t, Buffer&>("run", dataRes.buff.getBase(), dataRes.buff.getSize(), m_result.buff);
+		auto getOutput = [this](char*& ptr, size_t& size) {
+
+			ptr = m_result.buff.getBase();
+			size = m_result.buff.getSize();
+		};
+
+
+		dllLoader.call<
+						std::function<void(char*&, size_t&)>,
+                    	std::function<void(size_t)>,
+                    	std::function<void(char*, size_t)>,
+						std::function<void(char*&, size_t&)>
+					  >
+
+			("run", getInput, expandOutput, writeOutput, getOutput);
 
 		std::cout << "*****************************************************************" << std::endl;
 
@@ -155,10 +186,44 @@ struct Job {
 			}
 
 
-
 			m_result.buff.clear();
 			
-			dllLoader.call<std::vector<Buffer*>&, Buffer&>("combine", temp, m_result.buff);
+			auto getSegment = [&temp](char*& segOut, size_t& size, int seg) {
+			
+				Buffer* buff = temp.at(seg);
+				
+				size = buff->getSize();
+				segOut = buff->getBase();
+
+			};
+
+			auto getOutput = [this](char*& ptr, size_t& size) {
+
+				ptr  = m_result.buff.getBase();
+				size = m_result.buff.getSize();
+			};
+
+			auto expandSegment = [&temp](size_t size, int seg) {
+			
+				Buffer* buff = temp.at(seg);
+				
+				buff->resize(buff->getSize() + size);
+
+			};
+
+			auto writeOutput = [this](char* src, size_t size) {
+
+				m_result.buff.write(src, size);
+			};
+
+			dllLoader.call<
+							int,
+                            std::function<void(char*&, size_t&, int)>,
+							std::function<void(char*&, size_t&)>,
+                        	std::function<void(size_t, int)>,
+                            std::function<void(char*, size_t)> 
+						>
+				("combine", temp.size(), getSegment, getOutput, expandSegment, writeOutput);
 
 			_hasRun = true;
 			

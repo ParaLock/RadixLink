@@ -2,26 +2,41 @@
 #define EXAMPLE_DLL_H
 
 #include <string>
+#include <functional>
 
-#include "Buffer.h"
 #include "Utils.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef BUILDING_EXAMPLE_DLL
-#define EXAMPLE_DLL __declspec(dllexport)
-#else
-#define EXAMPLE_DLL __declspec(dllimport)
-#endif
+//Key 0 is always context relative buffer.
+const unsigned int INPUT_MEM = 0;
+const unsigned int RESULT_MEM = 1;
 
-void __stdcall EXAMPLE_DLL run(char *s, size_t size, Buffer& buff);
-void __stdcall EXAMPLE_DLL combine(std::vector<Buffer*>& results, Buffer& finalResult);
-void __stdcall EXAMPLE_DLL segmentData(int numNodes, Buffer& data, std::vector<Buffer>& segmentsOut);
+__declspec(dllexport) __stdcall void run(
+                    std::function<void(char*&, size_t&)>       getInput,
+                    std::function<void(size_t)>                expandOutput,
+                    std::function<void(char*, size_t)>        writeOutput,
+                    std::function<void(char*&, size_t&)>      getOutput);
 
 
-int EXAMPLE_DLL Double(int x);
+__declspec(dllexport) __stdcall void combine(
+                        int                                        numSegments,
+                        std::function<void(char*&, size_t&, int)>  getSegment,
+                        std::function<void(char*&, size_t&)>       getOutput,
+                        std::function<void(size_t)>                expandOutput,
+                        std::function<void(char*, size_t)>         writeOutput
+                    );
+
+__declspec(dllexport) __stdcall void segmentData(   
+                                                    int                                       numNodes,
+                                                    std::function<void(char*&, size_t&)>        getInput,
+                                                    std::function<void(char*&, size_t&, int)>  getSegment,
+                                                    std::function<void(size_t, int)>            expandSegment,
+                                                    std::function<void(char*, size_t, int)>   writeSegment);
+
+__declspec(dllexport) int Double(int x);
 
 #ifdef __cplusplus
 }

@@ -6,18 +6,24 @@ extern "C" {
     #include "qdbmp.c"
 }
 
-__stdcall void run(char *s, size_t size, Buffer& result)
+
+__stdcall void run(
+                    std::function<void(char*&, size_t&)>       getInput,
+                    std::function<void(size_t)>                expandOutput,
+                    std::function<void(char*, size_t)>         writeOutput,
+                    std::function<void(char*&, size_t&)>       getOutput)
 {
+    char* s = nullptr;
+    size_t size = 0;
+
+    getInput(s, size);
+
     BMP* img = BMP_ReadBuff((unsigned char*)s, size);
     
     if(!img) {
 
         std::cout << "Segmentor.Run: Failed to read image: " << BMP_GetErrorDescription() << std::endl;
     }
-
-    FILE* f = fopen("after.bmp", "wb");
-    fwrite(s, sizeof(char), size, f);
-    fclose(f);
 
     uint32_t w = 0, h = 0;
 
@@ -90,19 +96,29 @@ __stdcall void run(char *s, size_t size, Buffer& result)
                                     std::min(std::max(int(factor * blue + bias), 0), 255));
     }
 
-    result.resize(size);
+    expandOutput(BMP_GetSizeInBytes(processedImg));
 
-    BMP_WriteBuff(processedImg, (unsigned char*)result.getBase(), result.getSize());
-
-    f = fopen("after_effect.bmp", "wb");
-    fwrite((unsigned char*)result.getBase(), sizeof(char), result.getSize(), f);
+    char*   result = nullptr;
+    size_t  resultSize   = 0;
+    getOutput(result, resultSize);
+    
+    FILE* f = fopen("after_run.bmp", "wb");
+    fwrite((unsigned char*)result, sizeof(char), resultSize, f);
     fclose(f);
+
+    BMP_WriteBuff(processedImg, (unsigned char*)result, resultSize);
 
     BMP_Free(img);
     BMP_Free(processedImg);
 }
 
-__stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)
+__stdcall void combine(
+                        int                                        numSegments,
+                        std::function<void(char*&, size_t&, int)>  getSegment,
+                        std::function<void(char*&, size_t&)>       getOutput,
+                        std::function<void(size_t)>                expandOutput,
+                        std::function<void(char*, size_t)>         writeOutput
+                    )
 {
     uint32_t height = 0;
     uint32_t width = 0;
@@ -110,12 +126,30 @@ __stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)
 
     std::vector<BMP*> subImgs;
 
-    for(int i = 0; i < results.size(); i++) {
+    for(int i = 0; i < numSegments; i++) {
+        
+        char*   segment = nullptr;
+        size_t  size    = 0;
+        
+        getSegment(segment, size, i);
 
-        subImgs.push_back(BMP_ReadBuff((unsigned char*)results[i]->getBase(), results[i]->getSize())); 
+        std::cout << "Reading Image... " << std::endl;
+
+        BMP* subImg = BMP_ReadBuff((unsigned char*)segment, size);
+
+        if(!subImg) {
+
+            std::cout << "Failed to create subimage!" << std::endl;
+
+            return;
+        }
+
+        subImgs.push_back(subImg); 
+
+        std::cout << "Finished Reading Image... " << std::endl;
     }
 
-    for(int i = 0; i < results.size(); i++) {
+    for(int i = 0; i < numSegments; i++) {
 
         depth = BMP_GetDepth(subImgs[i]);
 
@@ -128,10 +162,12 @@ __stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)
     uint32_t currOffsetH = 0;
     uint32_t currOffsetW = 0;
 
-    uint32_t segHeight = std::ceil(height / results.size()); 
-    uint32_t segWidth  = std::ceil(width / results.size());
+    uint32_t segHeight = std::ceil(height / numSegments); 
+    uint32_t segWidth  = std::ceil(width / numSegments);
 
     for(int i = 0; i < subImgs.size(); i++) {
+
+        std::cout << "Combining SubImage number: " << i << std::endl;
 
         for(int w = currOffsetW; w < segWidth; w++) {
             for(int h = currOffsetH; h < segHeight; h++) {
@@ -149,9 +185,20 @@ __stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)
         currOffsetH += segHeight;
     }
 
-    finalResult.resize(BMP_GetSizeInBytes(finalImage));
+    expandOutput(BMP_GetSizeInBytes(finalImage));
 
-    BMP_WriteBuff(finalImage, (unsigned char*)finalResult.getBase(), finalResult.getSize());
+    char*  finalResult     = nullptr;
+    size_t finalResultSize = 0;
+
+    getOutput(finalResult, finalResultSize);
+
+    FILE* f = fopen("after_combine.bmp", "wb");
+    fwrite((unsigned char*)finalResult, sizeof(char), finalResultSize, f);
+    fclose(f);
+
+    std::cout << "Writing combined image... " << std::endl;
+    
+    BMP_WriteBuff(finalImage, (unsigned char*)finalResult, finalResultSize);
     BMP_Free(finalImage);
 
     for(int i = 0; i < subImgs.size(); i++) {
@@ -160,9 +207,18 @@ __stdcall void combine(std::vector<Buffer*>& results, Buffer& finalResult)
     }
 }
 
-__stdcall void segmentData(int numNodes, Buffer& input, std::vector<Buffer>& segments) {
+__stdcall void segmentData(int numNodes,
+                            std::function<void(char*&, size_t&)>        getInput,
+                            std::function<void(char*&, size_t&, int)>  getSegment,
+                            std::function<void(size_t, int)>            expandSegment,
+                            std::function<void(char*, size_t, int)>   writeSegment) {
 
-    BMP* originalImg = BMP_ReadBuff((unsigned char*)input.getBase(), input.getSize());
+    char*  input     = nullptr;
+    size_t inputSize = 0;
+
+    getInput(input, inputSize);
+
+    BMP* originalImg = BMP_ReadBuff((unsigned char*)input, inputSize);
 
     if(!originalImg) {
 
@@ -219,15 +275,15 @@ __stdcall void segmentData(int numNodes, Buffer& input, std::vector<Buffer>& seg
         std::cout << "Segmentor.seg: size of image out: " << BMP_GetSizeInBytes(newImg) << std::endl;
 
         //write image segment to new segment buffer! 
-        segments.push_back(Buffer(BMP_GetSizeInBytes(newImg)));
 
-        auto& buff = segments.back();
+        expandSegment(BMP_GetSizeInBytes(newImg), i);
 
-        BMP_WriteBuff(newImg, (unsigned char*)buff.getBase(), buff.getSize());
+        char*  seg     = nullptr;
+        size_t segSize = 0;
 
-        FILE* f = fopen("before.bmp", "wb");
-        fwrite(buff.getBase(), sizeof(uint8_t), buff.getSize(), f);
-        fclose(f);
+        getSegment(seg, segSize, i);
+
+        BMP_WriteBuff(newImg, (unsigned char*)seg, segSize);
 
         BMP_Free(newImg);
     }

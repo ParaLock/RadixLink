@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
 
         int jobID = -1;
 
-        if(!jobMan.createJob("image_job_dll.dll", "flower.bmp", "run", netMan.getActiveNodes(), jobID)) {
+        if(!jobMan.createJob(codeFn, data, "run", netMan.getActiveNodes(), jobID)) {
 
             std::cout << "App: Job creation failed!" << std::endl;
         }
