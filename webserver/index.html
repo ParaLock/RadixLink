@@ -67,8 +67,8 @@
             selectedNode = {};
 
             //Yup.. This is a pretty ugly hack.. :(
-            readStopped = false;
-            writeStopped = false;
+            readStopped = true;
+            writeStopped = true;
 
             jobInProgress = false;
 
@@ -209,7 +209,7 @@
                     var status = parser.getScaler("status");
 
                     if(status == "failed") {
-                        
+
                         writeLog("Node Operation Failed");
                         
                     } else if (status == "success"){
@@ -336,6 +336,10 @@
                     var codeFn = "example_dll.dll";
                     var dataFn = "data.dat";
                     var jobName = "run";
+
+                    codeFn = prompt("Code File: ");
+                    dataFn = prompt("Data File: ");
+                    jobName = prompt("Job name: ");
 
                     var parser = new MsgParser;
 

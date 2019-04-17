@@ -81,6 +81,18 @@ class MsgParser {
         return temp;
     }
 
+    get(name) {
+
+        if(this.m_scalers.hasOwnProperty(name)) {
+
+            return this.m_scalers[name];
+            
+        } else if(this.m_lists.hasOwnProperty(name)) {
+
+            return this.m_lists[name];
+        }
+    }
+
     getScaler(name) {
 
         return this.m_scalers[name];
