@@ -6,7 +6,7 @@ bool NetworkManager::connectToNode(const char* target, const char* port, bool is
     std::string tempTarget = target;
     std::string tempPort   = port;
 
-    m_pendingConnections.push_back(std::make_pair(target, port));
+    //m_pendingConnections.push_back(std::make_pair(target, port));
 
     m_workQueue.addTask(Task(
 			"net_connection_thread",
@@ -70,7 +70,7 @@ void NetworkManager::processConnection(std::string target, std::string port, boo
     if(ConnectSocket == SOCKET_ERROR) {
 
         freeaddrinfo(result);
-
+        
         std::string tempTarget = target;
         std::string tempPort   = port;
 
@@ -102,7 +102,10 @@ void NetworkManager::processConnection(std::string target, std::string port, boo
 
     connection.socket = ConnectSocket;
 
-    m_pendingConnections.pop_back();
+    DWORD timeout = 2000;
+    setsockopt(connection.socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+
+    //m_connections.insert({name, connection});
     m_connections.insert({name, connection});
     
    // std::cout << "NetManager: adding active node: " << name << std::endl;
@@ -291,6 +294,8 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
 	return true;
 
 }
+
+
 	
 void NetworkManager::acceptConnection() {
 	
@@ -311,7 +316,7 @@ void NetworkManager::acceptConnection() {
             if (iResult == SOCKET_ERROR) {
                 printf("listen failed with error: %d\n", WSAGetLastError());
                 closesocket(m_listenSocket);
-                return;
+                continue;
             }
 
            // std::cout << "Client listen complete " << std::endl;
@@ -321,7 +326,7 @@ void NetworkManager::acceptConnection() {
             if (ClientSocket == INVALID_SOCKET) {
                 printf("accept failed with error: %d\n", WSAGetLastError());
                 closesocket(m_listenSocket);
-                return;
+                continue;
             }
             
             char *ip = inet_ntoa(client_info.sin_addr);
@@ -329,6 +334,8 @@ void NetworkManager::acceptConnection() {
             con.socket = ClientSocket;
             con.ip = ip;
 
+            DWORD timeout = 2000;
+            setsockopt(con.socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
             std::cout << "NetworkManager: Client " << std::string(ip) << " connected" << std::endl;
 
@@ -340,13 +347,11 @@ void NetworkManager::acceptConnection() {
                 
                 m_connections.insert({name, con});
 
-                return;
+                continue;
             }
-            
-            m_activeConnections.push_back(name);
 
             m_connections.insert({name, con});
-            
+            m_activeConnections.push_back(name);
         }
     }
 }
