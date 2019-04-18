@@ -10,35 +10,37 @@ class MsgParser {
 
     parse(incomingMsg) {   
 
-        var tokens = incomingMsg.split(';');
-        
-        for(var i = 0; i < tokens.length; i++) {
+        if(incomingMsg.length > 1) {
 
-            if(tokens[i].length == 1) {
-                continue;
-            }
-
-            var keyVals = tokens[i].split('=');
-            var listVals = keyVals[1].split('-');
+            var tokens = incomingMsg.split(';');
             
-            if(listVals.length > 1) {
+            for(var i = 0; i < tokens.length; i++) {
 
-                var list = [];
-
-                for(var j = 0; j < listVals.length; j++) {
-
-                    list.push(listVals[j]);
+                if(tokens[i].length == 1) {
+                    continue;
                 }
 
-                this.m_lists[keyVals[0]] = list;
+                var keyVals = tokens[i].split('=');
+                var listVals = keyVals[1].split('-');
+                
+                if(listVals.length > 1) {
 
-            } else {
+                    var list = [];
 
-                this.m_scalers[keyVals[0]] = keyVals[1];
+                    for(var j = 0; j < listVals.length; j++) {
+
+                        list.push(listVals[j]);
+                    }
+
+                    this.m_lists[keyVals[0]] = list;
+
+                } else {
+
+                    this.m_scalers[keyVals[0]] = keyVals[1];
+                }
+
             }
-
         }
-
     }
 
     encode(name, val) {
@@ -85,22 +87,25 @@ class MsgParser {
 
         if(this.m_scalers.hasOwnProperty(name)) {
 
-            return this.m_scalers[name];
-            
+            var l = [];
+            l.push(this.m_scalers[name]);
+
+            return l;
+
         } else if(this.m_lists.hasOwnProperty(name)) {
 
             return this.m_lists[name];
         }
     }
 
-    getScaler(name) {
+    getScaler(l, def) {
 
-        return this.m_scalers[name];
-    } 
+        for(var i = 0; i < l.length; i++) {
 
-   getList(name) {
+            return l[i];
+        }
 
-        return this.m_lists[name];
+        return def;
     }
 
 };

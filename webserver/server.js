@@ -25,7 +25,13 @@ io.on('connection', function (socket) {
 
 	socket.on('request', function (data) {
 
-		client.write(packRadixLinkBuffer(data));
+		console.log("Incoming raw from web: " + data);
+
+		var buff = packRadixLinkBuffer(data);
+
+		console.log("Incoming processed from web: " + buff);
+
+		client.write(buff);
 		
 	});
 
@@ -41,12 +47,15 @@ client.connect(27016, '127.0.0.1', function() {
 
 client.on('data', function(data) {
 
-	//This check is here to so that we skip the total size header.
-	if(data.length > 4) {
+
+	//This check is here so that we skip the total size header.
+	if(data.length > 8) {
+		
+		console.log("Incoming from app raw: " + data);
 
 		var str = unpackRadixLinkBuffer(data);
 
-		console.log(str);
+		console.log("Incoming from app processed: " + str);
 
 		webSocket.emit("result", str);
 	}
@@ -60,8 +69,6 @@ const SIZE_PAYLOAD  = 4;
 function packRadixLinkBuffer(data) {
 	
 	console.log("Outgoing: " + data);
-
-	data = data;
 
 	var currOffset = 0;
 

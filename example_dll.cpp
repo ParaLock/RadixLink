@@ -91,8 +91,6 @@ __stdcall void segmentData(
 
             count++;
         }
-
-		count = 0;
     }
 
 }

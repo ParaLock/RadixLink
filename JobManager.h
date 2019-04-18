@@ -171,6 +171,8 @@ public:
 
 			while (segments.size() < seg + 1) {
 
+                std::cout << "JobManager: writeSegment: creating new segment!" << std::endl;
+
 				segments.push_back(Buffer());
 			}
 
@@ -182,6 +184,8 @@ public:
         auto getSegment = [&segments](char*& src, size_t& size, int seg) {
 
 			while (segments.size() < seg + 1) {
+                
+                std::cout << "JobManager: getSegment: creating new segment!" << std::endl;
 
 				segments.push_back(Buffer());
 			}
@@ -195,6 +199,8 @@ public:
         auto expandSegment = [&segments](size_t size, int seg) {
 
 			while (segments.size() < seg + 1) {
+
+                std::cout << "JobManager: expandSegment: creating new segment!" << std::endl;
 
 				segments.push_back(Buffer());
 			}

@@ -167,8 +167,8 @@ __stdcall void combine(
     uint32_t currOffsetH = 0;
     uint32_t currOffsetW = 0;
 
-    uint32_t segHeight = std::ceil(height / numSegments); 
-    uint32_t segWidth  = std::ceil(width / numSegments);
+    uint32_t segHeight = std::floor(height / numSegments); 
+    uint32_t segWidth  = width;
 
     for(int i = 0; i < subImgs.size(); i++) {
 
@@ -186,13 +186,12 @@ __stdcall void combine(
             }
         }
 
-        currOffsetW += segWidth;
         currOffsetH += segHeight;
     }
 
     std::cout << "Expanding output buffer... " << std::endl;
 
-    +(BMP_GetSizeInBytes(finalImage));
+    expandOutput(BMP_GetSizeInBytes(finalImage));
 
     char*  finalResult     = nullptr;
     size_t finalResultSize = 0;
@@ -251,10 +250,12 @@ __stdcall void segmentData(int numNodes,
 
     } else {
 
-        segWidth  = std::ceil(width / numNodes);
-        segHeight = std::ceil(height / numNodes);        
+        //segWidth  = std::ceil(width / numNodes);
+        segHeight = std::floor(height / numNodes);        
 
     }
+
+    segWidth = width;
 
     size_t currOffsetH = 0;
     size_t currOffsetW = 0;
@@ -282,7 +283,6 @@ __stdcall void segmentData(int numNodes,
         }
 
         currOffsetH += segHeight;
-        currOffsetW += segWidth;
 
         std::cout << "Segmentor.seg: size of image out: " << BMP_GetSizeInBytes(newImg) << std::endl;
 

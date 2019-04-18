@@ -56,7 +56,7 @@ public:
             WebMsgParser parser;
             parser.parse(res[i].buff);
 
-            std::string op = parser.getScaler("op");
+            std::string op = getScaler(parser.get("op"), "-1");
 
             std::string newOp = "result";
             std::string status = "none";
@@ -77,9 +77,11 @@ public:
 
             if(op == "create_job") {
                 
-                std::string codeFn = parser.getScaler("codeFn");
-                std::string dataFn = parser.getScaler("dataFn");
-                std::string jobName = parser.getScaler("jobName");
+                
+
+                std::string codeFn = getScaler(parser.get("codeFn"), "none");
+                std::string dataFn = getScaler(parser.get("dataFn"), "none");
+                std::string jobName = getScaler(parser.get("jobName"), "none");
 
                 std::vector<std::string> activeNodes = parser.get("contrib_nodes");
 
@@ -117,7 +119,7 @@ public:
 
             if(op == "write_result") {
                 
-                std::string id = parser.getScaler("jobID");
+                std::string id = getScaler(parser.get("jobID"), "-1");
 
                 unsigned int jobID = std::stoul(id);
 

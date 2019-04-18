@@ -55,7 +55,6 @@
         
         <script>
 
-            socket = io.connect('http://127.0.0.1:3000');
 
             nodeIdByIP = {};
             edgeByFromIP = {};
@@ -82,11 +81,6 @@
                 return Object.keys(object).find(key => object[key] === value);
             }
 
-
-            socket.on('result', function (data) {
-                
-                handleResponse(data);
-            });
 
             function sendRequest(data) {
 
@@ -202,11 +196,11 @@
                 var parser = new MsgParser();
                 parser.parse(data);
                 
-                var op = parser.getScaler("op");
+                var op = parser.getScaler(parser.get("op"), "-1");
 
                 if(op == "result") {
 
-                    var status = parser.getScaler("status");
+                    var status = parser.getScaler(parser.get("status"), "none");
 
                     if(status == "failed") {
 
@@ -214,11 +208,11 @@
                         
                     } else if (status == "success"){
                         
-                        var job = parser.get("job");
+                        var job = parser.getScaler(parser.get("job"), "none");
 
                         if(job != "none") {
 
-                            writeLog("Node Operation Completed Successfully -> Job: " + parser.get("job"));
+                            writeLog("Node Operation Completed Successfully -> Job: " + parser.getScaler(parser.get("job"), "none"));
 
                         } else {
 
@@ -233,32 +227,20 @@
 
                 if(op == "active_node_list") {
 
-                    var ips = parser.getList("nodes");
+                    var ips = parser.get("nodes");
                     
-                    if(ips == undefined) {
-                        
-                        var ip = parser.getScaler("nodes");
+                    for(var i = 0; i < ips.length; i++) {
 
-                        if(ip != undefined) {
+                        addNode(ips[i]);
 
-                            addNode(ip);
-                        }
-
-                    } else {
-                        
-                        for(var i = 0; i < ips.length; i++) {
-
-                            addNode(ips[i]);
-
-                        }
                     }
 
                 }
 
                 if(op == "node_state") {
                     
-                    var writingToo = parser.getScaler("write_state");
-                    var readingFrom = parser.getScaler("read_state");
+                    var writingToo = parser.getScaler(parser.get("write_state"));
+                    var readingFrom = parser.getScaler(parser.get("read_state"));
 
                     if(isIPAddress(writingToo)) {
 
@@ -430,6 +412,15 @@
 
             window.onload = function() {
 
+                socket = io.connect('http://127.0.0.1:3000');
+
+
+
+                socket.on('result', function (data) {
+                
+                    handleResponse(data);
+                });
+
                 nodes = new vis.DataSet([]);
                 edges = new vis.DataSet([]);
 
@@ -460,7 +451,7 @@
                     
                     sendRequest(parser.getMessage());
 
-                }.bind(this), 500);
+                }.bind(this), 700);
 
                 setInterval(function() {
 

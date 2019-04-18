@@ -94,30 +94,6 @@ public:
         return temp;
     }
 
-    std::string getScaler(std::string name) {
-
-        auto itr = m_scalers.find(name);
-
-        if(itr == m_scalers.end()) {
-
-            return "";
-        }
-
-        return m_scalers.at(name);
-    } 
-
-    std::vector<std::string> getList(std::string name) {
-
-        auto itr = m_scalers.find(name);
-
-        if(itr == m_scalers.end()) {
-
-            return std::vector<std::string>();
-        }
-
-        return m_lists.at(name);
-    }
-
     std::vector<std::string> get(std::string name) {
 
         std::vector<std::string> vals;
@@ -129,6 +105,10 @@ public:
             vals.push_back(m_scalers.at(name));
 
             return vals;
+
+        } else {
+
+            std::cout << "WebMsgParser: Unknown key: " << name << std::endl;
         }
 
         auto itr_scaler = m_lists.find(name);
@@ -136,9 +116,23 @@ public:
         if(itr_scaler != m_lists.end()) {
 
             vals = m_lists.at(name);
+        } else {
+
+            std::cout << "WebMsgParser: Unknown key: " << name << std::endl;
         }
 
         return vals;
     }
 
 };
+
+std::string getScaler(std::vector<std::string> list, std::string def) {
+
+    for(int i = 0; i < list.size(); i++) {
+
+        return list[i];
+    }
+
+    return def;
+}
+
