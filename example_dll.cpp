@@ -93,21 +93,20 @@ __stdcall void segmentData(
     // data = std::stoull(nums[3]);
 	// writeSegment((char*)&data, sizeof(uint64_t), 1);
 
-    int count = 0;
-    int currSeg = 0;
+    int segCount = 0;
+    int count    = 0;
 
     for(int i = 0; i < nums.size(); i++) {
 
         uint64_t data = std::stoull(nums[i]);
-	    writeSegment((char*)&data, sizeof(uint64_t), currSeg);
-        
-        if(count == 2) {
-
-            currSeg++;
-            count = 0;
-        }
+	    writeSegment((char*)&data, sizeof(uint64_t), segCount);
 
         count++;
+
+        if(count == 2) {
+            count = 0;
+            segCount++;
+        }
     }
 
 }
