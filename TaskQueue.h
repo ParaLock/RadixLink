@@ -37,20 +37,28 @@ struct Worker {
 
     ~Worker() {
 
-        if(mutex)
-            delete mutex;
-        if(workAvailable)
-            delete workAvailable;
 
-        if(workerThread) {
+
+    }
+
+    void stop() {
+
+        if(workerThread && mutex && workAvailable) {
 
             isRunning = false;
+            isWorkAvailable = true;
+            workAvailable->notify_one();
+
             workerThread->join();
 
             delete workerThread;
 
         }
 
+        if(mutex)
+            delete mutex;
+        if(workAvailable)
+            delete workAvailable;
     }
 
     void start() {
@@ -103,28 +111,57 @@ private:
     
     std::map<std::string, Worker> m_taskGroups;
 
+    bool m_isActive;
+
 public:
+
+    TaskQueue() {
+
+        m_isActive = true;
+    }
+
+    ~TaskQueue() {
+
+        
+    }
+
+    void stop() {
+
+        m_isActive = false;
+
+        for (auto& worker : m_taskGroups) {
+
+            std::cout << "Thread Model: Stopping OR Moving worker thread." << std::endl;
+
+            worker.second.stop();
+
+            std::cout << "Thread Model: Worker Thread Joined." << std::endl;
+        }
+    }
 
     void addTask(Task task) {
 
-        auto itr = m_taskGroups.find(task.group);
+        if(m_isActive) {
 
-        if(itr == m_taskGroups.end()) {
+            auto itr = m_taskGroups.find(task.group);
 
-            m_taskGroups.insert({task.group, Worker()});
+            if(itr == m_taskGroups.end()) {
 
-            Worker& temp = m_taskGroups.at(task.group);
-            temp.start();
+                m_taskGroups.insert({task.group, Worker()});
+
+                Worker& temp = m_taskGroups.at(task.group);
+                temp.start();
+            }
+
+            auto& group = m_taskGroups.at(task.group);
+
+        // std::lock_guard<std::mutex> lk(*group.mutex);
+
+            group.work.push_back(task);
+
+            group.isWorkAvailable = true;
+            group.workAvailable->notify_one();
         }
-
-        auto& group = m_taskGroups.at(task.group);
-
-       // std::lock_guard<std::mutex> lk(*group.mutex);
-
-        group.work.push_back(task);
-
-        group.isWorkAvailable = true;
-        group.workAvailable->notify_one();
 
     }
 
@@ -132,7 +169,9 @@ public:
 
         for(int i = 0; i < tasks.size(); i++) {
 
-            addTask(tasks[i]);
+            if(m_isActive) {
+                addTask(tasks[i]);
+            }
         }
     }
 

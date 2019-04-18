@@ -63,8 +63,6 @@ public:
 
     void addResources(std::vector<Resource>& resources, std::string group) {
 
-        m_resLock.lock();
-
         std::string groupName = m_name + "-" + group;
 
         createGroupIfNotPresent(groupName);
@@ -87,15 +85,16 @@ public:
                 std::bind(&Manager<T>::execute, this)
             ));
         }
-
-        m_resLock.unlock();
     }
 
     virtual void execute() = 0;
+    
+    virtual void customShutdown() {
+
+
+    };
 
     void addResource(Resource& resource, std::string group) {
-
-        m_resLock.lock();
 
         std::string groupName = m_name + "-" + group;
 
@@ -119,8 +118,6 @@ public:
 				std::bind(&Manager<T>::execute, this)
 			));
 		}
-
-        m_resLock.unlock();
     }
 
     std::string getName() {
@@ -128,8 +125,6 @@ public:
     }
 
     void getResources(int num, std::vector<Resource>& resources, std::string group) {
-
-        m_resLock.lock();
 
         std::string groupName = m_name + "-" + group;
 
@@ -143,7 +138,6 @@ public:
             resVec.pop_back();
         }
 
-        m_resLock.unlock();
     }
 
     int getNumPendingResources(std::string group) {
@@ -168,7 +162,11 @@ public:
 
     void stop() {
 
+        std::cout << "Module Manager: Shutting down: " << m_name << std::endl;
+
         m_isRunning = false;
+
+        customShutdown();
     }
 
     void start() {

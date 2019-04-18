@@ -169,9 +169,11 @@ public:
 
 		auto writeSegment = [&segments](char* src, size_t size, int seg) {
 
+            std::cout << "JobManager: writeSegment: seg: " << seg << " size: " << size << " existing segments: " << " pointer: " << static_cast<void*>(src) << segments.size() << std::endl;
+
 			while (segments.size() < seg + 1) {
 
-                std::cout << "JobManager: writeSegment: creating new segment!" << std::endl;
+                std::cout << "JobManager: writeSegment: creating new segment! seg: " << seg << std::endl;
 
 				segments.push_back(Buffer());
 			}
@@ -183,9 +185,11 @@ public:
         
         auto getSegment = [&segments](char*& src, size_t& size, int seg) {
 
+            std::cout << "JobManager: getSegment: seg: " << seg << std::endl;
+
 			while (segments.size() < seg + 1) {
                 
-                std::cout << "JobManager: getSegment: creating new segment!" << std::endl;
+                std::cout << "JobManager: getSegment: creating new segment! seg: " << seg << std::endl;
 
 				segments.push_back(Buffer());
 			}
@@ -200,7 +204,7 @@ public:
 
 			while (segments.size() < seg + 1) {
 
-                std::cout << "JobManager: expandSegment: creating new segment!" << std::endl;
+                std::cout << "JobManager: expandSegment: creating new segment! seg: " << seg << std::endl;
 
 				segments.push_back(Buffer());
 			}

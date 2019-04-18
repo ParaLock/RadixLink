@@ -194,11 +194,6 @@ int main(int argc, char **argv) {
         std::string jobName;
         std::string data;
 
-        std::string targetNode;
-
-        std::cout << "target node: ";
-        std::cin >> targetNode;
-
         std::cout << "code filename(max length 20 char): ";
         std::cin >> codeFn;
 
@@ -265,11 +260,11 @@ int main(int argc, char **argv) {
     jobMan.start();
     nodeMan.start();
 
-    primary_actions.insert({8, []{}});
+    primary_actions.insert({6, []{}});
 
     int op = 0;
 
-    while(op < 7) {
+    while(op != 6) {
     
         std::cout << "1) Create Job" << std::endl;
         std::cout << "2) See Current Outgoing Jobs" << std::endl;
@@ -292,6 +287,8 @@ int main(int argc, char **argv) {
     netMan.stop();
     jobMan.stop();
     nodeMan.stop();
+    
+    taskQueue.stop();
 
     WSACleanup();
 

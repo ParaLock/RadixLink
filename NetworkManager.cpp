@@ -69,6 +69,8 @@ void NetworkManager::processConnection(std::string target, std::string port, boo
 
     if(ConnectSocket == SOCKET_ERROR) {
 
+        freeaddrinfo(result);
+
         std::string tempTarget = target;
         std::string tempPort   = port;
 
@@ -122,6 +124,24 @@ bool NetworkManager::disconnect(std::string nodeName) {
 	
 	return true;
 	
+}
+
+void NetworkManager::customShutdown() {
+
+    m_monitorConnected = false;
+    m_listening        = false;
+    m_connecting       = false;
+    m_serverCreated    = false;
+
+    std::cout << "NetworkManager: Closing listener Socket!" << std::endl;
+    closesocket(m_listenSocket);
+
+    for (auto const& s : m_connections) {
+
+        std::cout << "NetworkManager: Shutting down connection!" << std::endl;
+
+        closesocket(s.second.socket);
+    }
 }
 	
 bool NetworkManager::write(std::string nodeName, Buffer& buff) {
@@ -240,7 +260,6 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
     iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
     if ( iResult != 0 ) {
         printf("getaddrinfo failed with error: %d\n", iResult);
-        WSACleanup();
         return 1;
     }
 
@@ -249,7 +268,6 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
     if (m_listenSocket == INVALID_SOCKET) {
         printf("socket failed with error: %ld\n", WSAGetLastError());
         freeaddrinfo(result);
-        WSACleanup();
         return 1;
     }
 
@@ -259,7 +277,6 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
         printf("bind failed with error: %d\n", WSAGetLastError());
         freeaddrinfo(result);
         closesocket(m_listenSocket);
-        WSACleanup();
         return 1;
     }
 
@@ -294,7 +311,6 @@ void NetworkManager::acceptConnection() {
             if (iResult == SOCKET_ERROR) {
                 printf("listen failed with error: %d\n", WSAGetLastError());
                 closesocket(m_listenSocket);
-                WSACleanup();
                 return;
             }
 
@@ -305,7 +321,6 @@ void NetworkManager::acceptConnection() {
             if (ClientSocket == INVALID_SOCKET) {
                 printf("accept failed with error: %d\n", WSAGetLastError());
                 closesocket(m_listenSocket);
-                WSACleanup();
                 return;
             }
             

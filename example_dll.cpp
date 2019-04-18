@@ -17,6 +17,10 @@ __stdcall void run(
 
     getInput(s, size);
 
+    //printf("Input (size, ptr): %s, %p....\n", size, s);
+
+    printf("Got input\n");
+
     uint64_t start = *(uint64_t*)s;
     uint64_t end   = *(uint64_t*)(s + sizeof(uint64_t));
 
@@ -80,17 +84,30 @@ __stdcall void segmentData(
         std::cout << "Segmenter: segment value: " << std::stoull(nums[i]) << std::endl;
     }
 
-	int count = 0;
+    // uint64_t data = std::stoull(nums[0]);
+	// writeSegment((char*)&data, sizeof(uint64_t), 0);
+    // data = std::stoull(nums[1]);
+	// writeSegment((char*)&data, sizeof(uint64_t), 0);
+    // data = std::stoull(nums[2]);
+	// writeSegment((char*)&data, sizeof(uint64_t), 1);
+    // data = std::stoull(nums[3]);
+	// writeSegment((char*)&data, sizeof(uint64_t), 1);
 
-    for(int i = 0; i < nums.size() / 2; i++) {
-		
-        for(int j = 0; j < 2; j++) {
+    int count = 0;
+    int currSeg = 0;
 
-            uint64_t data = std::stoull(nums[count]);
-			writeSegment((char*)&data, sizeof(uint64_t), i);
+    for(int i = 0; i < nums.size(); i++) {
 
-            count++;
+        uint64_t data = std::stoull(nums[i]);
+	    writeSegment((char*)&data, sizeof(uint64_t), currSeg);
+        
+        if(count == 2) {
+
+            currSeg++;
+            count = 0;
         }
+
+        count++;
     }
 
 }

@@ -97,6 +97,11 @@ public:
 		));
 	}
 
+	~NetworkManager() {
+
+
+	}
+
 	std::vector<std::string>& getActiveNodes();
 
 	bool dataReady(std::string socket);
@@ -114,6 +119,8 @@ public:
 	bool createServer(std::string ip,const char* port);
 	void acceptConnection();
 	
+	void customShutdown();
+
 	void execute();
 	
 };
