@@ -150,12 +150,13 @@ __stdcall void combine(
         std::cout << "Finished Reading Image... " << std::endl;
     }
 
+    width = BMP_GetWidth(subImgs[0]);
+
     for(int i = 0; i < numSegments; i++) {
 
         depth = BMP_GetDepth(subImgs[i]);
 
         height += BMP_GetHeight(subImgs[i]);
-        width += BMP_GetWidth(subImgs[i]);
 
         std::cout << "Segment: Depth: " << BMP_GetDepth(subImgs[i]);
         std::cout << "Segment: Height: " << BMP_GetHeight(subImgs[i]);
@@ -174,15 +175,15 @@ __stdcall void combine(
 
         std::cout << "Combining SubImage number: " << i << std::endl;
 
-        for(int w = currOffsetW; w < segWidth; w++) {
-            for(int h = currOffsetH; h < segHeight; h++) {
+        for(int w = 0; w < segWidth; w++) {
+            for(int h = 0; h < segHeight; h++) {
         
                 uint8_t r;
                 uint8_t g;
                 uint8_t b;
 
                 BMP_GetPixelRGB(subImgs[i], w, h, &r, &g, &b);
-                BMP_SetPixelRGB(finalImage, w, h, r, g, b);
+                BMP_SetPixelRGB(finalImage, w, h + currOffsetH, r, g, b);
             }
         }
 
@@ -265,19 +266,18 @@ __stdcall void segmentData(int numNodes,
     std::cout << "Segmentor: Image Seg Width: " << segWidth << std::endl;
     std::cout << "Segmentor: Image Seg Height: " << segHeight << std::endl;
 
-
     for(int i = 0; i < numNodes; i++) {
 
         BMP* newImg = BMP_Create(segWidth, segHeight, depth);
 
-        for(int w = currOffsetW; w < segWidth; w++) {
-            for(int h = currOffsetH; h < segHeight; h++) {
+        for(int w = 0; w < segWidth; w++) {
+            for(int h = 0; h < segHeight; h++) {
 
                 uint8_t r;
                 uint8_t g;
                 uint8_t b;
 
-                BMP_GetPixelRGB(originalImg, w, h, &r, &g, &b);
+                BMP_GetPixelRGB(originalImg, w, h + currOffsetH, &r, &g, &b);
                 BMP_SetPixelRGB(newImg, w, h, r, g, b);
             }
         }
@@ -296,6 +296,13 @@ __stdcall void segmentData(int numNodes,
         getSegment(seg, segSize, i);
 
         BMP_WriteBuff(newImg, (unsigned char*)seg, segSize);
+
+        std::string fn = "segment_" + std::to_string(i) + ".bmp";
+
+        FILE* f = fopen(fn.c_str(), "wb");
+        fwrite((unsigned char*)seg, sizeof(char), segSize, f);
+        fclose(f);
+
 
         BMP_Free(newImg);
     }
