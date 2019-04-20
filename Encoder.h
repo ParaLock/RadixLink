@@ -18,7 +18,6 @@ const int RESOURCE_TYPE_STATUS = 4;
 
 struct EncoderHeader {
 	
-
 	unsigned int type;
 	unsigned int jobID;
 	unsigned int payloadSize;

@@ -36,11 +36,6 @@ public:
 
                 res.buff.clear();
 
-                if(msg.size() < 5) {
-
-                    std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! BAD WEB MSG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-                }
-
                 res.buff.write((char*)msg.c_str(), msg.size());
 
                 std::cout << "NodeManager: status msg: " << msg << std::endl; 
