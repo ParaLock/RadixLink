@@ -18,10 +18,17 @@ struct Resource {
 	std::string codeFn;
 	std::string dataFn;
 	Buffer      buff;
-	Buffer      result;
 
 	Resource() {
 		
+		jobID = 0;
+		type  = -1;
+		order = 0;
+		destManager = "";
+
+		buff.clear();
+
+
 		target[0] = 'a';
 		target[1] = 'l';
 		target[2] = 'l';
@@ -37,7 +44,7 @@ struct Resource {
 		codeFn = other.codeFn;
 		dataFn = other.dataFn;
 
-		result = other.result;
+		//result = other.result;
 
 		order = other.order;
 

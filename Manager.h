@@ -63,6 +63,8 @@ public:
 
     void addResources(std::vector<Resource>& resources, std::string group) {
 
+        m_resLock.lock();
+
         std::string groupName = m_name + "-" + group;
 
         createGroupIfNotPresent(groupName);
@@ -85,6 +87,8 @@ public:
                 std::bind(&Manager<T>::execute, this)
             ));
         }
+
+        m_resLock.unlock();
     }
 
     virtual void execute() = 0;
@@ -95,6 +99,8 @@ public:
     };
 
     void addResource(Resource& resource, std::string group) {
+
+        m_resLock.lock();
 
         std::string groupName = m_name + "-" + group;
 
@@ -118,6 +124,8 @@ public:
 				std::bind(&Manager<T>::execute, this)
 			));
 		}
+
+        m_resLock.unlock();
     }
 
     std::string getName() {
@@ -125,6 +133,8 @@ public:
     }
 
     void getResources(int num, std::vector<Resource>& resources, std::string group) {
+
+        m_resLock.lock();
 
         std::string groupName = m_name + "-" + group;
 
@@ -137,6 +147,8 @@ public:
             resources.push_back(std::move(resVec.back()));
             resVec.pop_back();
         }
+
+        m_resLock.unlock();
 
     }
 

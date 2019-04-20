@@ -160,15 +160,26 @@ bool NetworkManager::write(std::string nodeName, Buffer& buff) {
 
 	Connection con = m_connections.at(nodeName);
 	
-	unsigned int size = buff.getSize();
+	unsigned int size = buff.getSize() + sizeof(unsigned int);
     size_t bytesSent = 0;
     int iResult = 0;
 
-	send( con.socket, (char*)&size, sizeof(unsigned int), 0);
+    Buffer transmission;
+
+    // transmission.data.insert(
+    //   transmission.data.end(),
+    //   std::make_move_iterator(buff.data.begin()),
+    //   std::make_move_iterator(buff.data.end())
+    // );
+
+    transmission.write((char*)&size, sizeof(unsigned int));
+    transmission.write(buff.getBase(), buff.getSize());
+    
+	//send( con.socket, (char*)&size, sizeof(unsigned int), 0);
 
     do {
 
-        iResult = send(con.socket, buff.getBase() + bytesSent, size - bytesSent, 0);
+        iResult = send(con.socket, transmission.getBase() + bytesSent, size - bytesSent, 0);
 
         if(iResult == SOCKET_ERROR) {
             
@@ -216,18 +227,16 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 
 	recv(con.socket, (char*)&size, sizeof(unsigned int), 0);
 
-    std::cout << "NetManager: Incoming buffer size: " << size << std::endl;
+    unsigned int realSize = size - sizeof(unsigned int);
+
+    std::cout << "NetManager: Incoming buffer size: " << realSize << std::endl;
 	
-    buff.resize(size);
-
- //CHECK FOR DISCONNECT: SOCKET_ERROR and WSAGetLastError() returns WSAECONNRESET
-
-    // Receive until the peer shuts down the connection
+    buff.resize(realSize);
 
     int iResult;
 
-   do {
-        iResult = recv(con.socket, buff.getBase() + bytesReceived, size - bytesReceived, 0);
+    do {
+        iResult = recv(con.socket, buff.getBase() + bytesReceived, realSize - bytesReceived, 0);
 
         if(iResult == SOCKET_ERROR) {
             
@@ -238,7 +247,7 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 
         bytesReceived += iResult;
 
-    }  while(bytesReceived < size);
+    }  while(bytesReceived < realSize);
 	
     printf("Bytes Received: %ld\n", bytesReceived);
 	

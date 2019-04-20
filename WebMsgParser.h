@@ -39,12 +39,16 @@ public:
 
                 for(int j = 0; j < listVals.size(); j++) {
 
-                    list.push_back(listVals[i]);
+                    std::cout << "WebMsgParser: list val: " << listVals[j] << std::endl;
+
+                    list.push_back(listVals[j]);
                 }
 
                 m_lists.insert({keyVals[0], list});
 
             } else {
+
+                std::cout << "WebMsgParser: Scaler (key, val): " << keyVals[0] << ", " << keyVals[1] << std::endl;
 
                 m_scalers.insert({keyVals[0], keyVals[1]});
 

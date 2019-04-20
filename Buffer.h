@@ -9,27 +9,34 @@ struct Buffer {
 
 		isLast = false;
 		seq = 0;
+		count = 0;
 	}
 
 	Buffer(size_t size) : data(size) {
 
 		isLast = false;
 		seq    = 0;
+		count = 0;
+		//count = size;
 	}
 
 	~Buffer() {	}
 
 	void write(char* src, unsigned int size, bool incPos = true) {
 		
-		unsigned int count = 0;
+		//unsigned int count = 0;
+		data.resize(data.size() + size);
+
+		memcpy(getBase() + count, src, size);
+		count += size;
+
+		// for(int i = 0; i < size; i++) {
 		
-		for(int i = 0; i < size; i++) {
-		
-			data.push_back(src[count]);
+		// 	data.push_back(src[count]);
 			
-			if(incPos)
-				count++;
-		}
+		// 	if(incPos)
+		// 		count++;
+		// }
 	}
 	
 	unsigned int getSize() {
@@ -73,6 +80,7 @@ struct Buffer {
 	
 	bool         	  isLast;
 	unsigned int 	  seq;
-	size_t       	  size;
+	size_t  		  count;
+	//size_t       	  size;
 	std::vector<char> data;
 };

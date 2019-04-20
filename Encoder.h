@@ -5,6 +5,7 @@
 #include "Resource.h"
 
 #include <fstream>
+#include <stdio.h>
 #include <iostream>
 #include <map>
 #include <functional>
@@ -22,7 +23,7 @@ struct EncoderHeader {
 	unsigned int jobID;
 	unsigned int payloadSize;
 	
-};
+}__attribute__((packed));
 
 struct Encoder {
 

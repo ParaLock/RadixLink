@@ -21,9 +21,11 @@ public:
 		
 		for(int i = 0; i < resources.size(); i++) {
 			
-			std::cout << "Dispatcher: Dispatched resource " << resources[i].type << " to " << resources[i].destManager << std::endl;
+			std::cout << "Dispatcher: Dispatched resource " << resources[i].type << " to " << resources[i].destManager << " group: " << group << std::endl;
 
 			m_managers.at(resources[i].destManager)->addResource(resources[i], group);
+
+			std::cout << "Dispatch: Resource dispatched successfully!" << std::endl;
 		}
 		
 	}

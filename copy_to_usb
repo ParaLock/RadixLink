@@ -1,0 +1,3 @@
+source mnt_usb
+sudo cp node.exe /mnt2/abc123/
+source umnt_usb

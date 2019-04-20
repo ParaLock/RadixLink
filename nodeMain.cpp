@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
 
     srand(time(NULL));
 
+    std::cout << sizeof(unsigned int);
  
     Encoder encoder;
     Decoder decoder;
@@ -150,6 +151,7 @@ int main(int argc, char **argv) {
 
     encoder.registerHandler(RESOURCE_TYPE_RESULT, [](Buffer& buff, Resource& resource) {
 
+
         std::cout << "Encoder: Result section detected!" << " payload size: " << resource.buff.getSize() + sizeof(resource.target) + sizeof(resource.order) << std::endl;
 
         EncoderHeader header;
@@ -172,6 +174,14 @@ int main(int argc, char **argv) {
         header.type         = resource.type;
         header.payloadSize  = resource.buff.getSize();
         header.jobID        = resource.jobID;
+
+
+        if(resource.buff.getSize() < 5) {
+
+            std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! BAD WEB MSG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+        }
+
+        buff.clear();
 
         buff.write((char*)&header, sizeof(EncoderHeader));
         buff.write(resource.buff.getBase(), resource.buff.getSize());

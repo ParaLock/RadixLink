@@ -18,18 +18,13 @@ var port = 3000;
 
 server.listen(port);
 
-
 io.on('connection', function (socket) {
 
 	console.log("Web Socket Connected!");
 
 	socket.on('request', function (data) {
 
-		console.log("Incoming raw from web: " + data);
-
 		var buff = packRadixLinkBuffer(data);
-
-		console.log("Incoming processed from web: " + buff);
 
 		client.write(buff);
 		
@@ -47,18 +42,10 @@ client.connect(27016, '127.0.0.1', function() {
 
 client.on('data', function(data) {
 
+	var str = unpackRadixLinkBuffer(data);
 
-	//This check is here so that we skip the total size header.
-	if(data.length > 8) {
-		
-		console.log("Incoming from app raw: " + data);
-
-		var str = unpackRadixLinkBuffer(data);
-
-		console.log("Incoming from app processed: " + str);
-
-		webSocket.emit("result", str);
-	}
+	webSocket.emit("result", str);
+	
 });
 
 const SIZE_HEADER   = 4;
@@ -68,8 +55,6 @@ const SIZE_PAYLOAD  = 4;
 
 function packRadixLinkBuffer(data) {
 	
-	console.log("Outgoing: " + data);
-
 	var currOffset = 0;
 
 	var totalSize = SIZE_HEADER + SIZE_TYPE + SIZE_JOBID + SIZE_PAYLOAD + data.length;
@@ -77,7 +62,7 @@ function packRadixLinkBuffer(data) {
 	var buff = Buffer.alloc(totalSize);
 
 	//Write transaction size to buffer
-	buff.writeInt32LE(totalSize - SIZE_HEADER, currOffset);
+	buff.writeInt32LE(totalSize, currOffset);
 
 	currOffset += SIZE_HEADER;
 
@@ -104,15 +89,30 @@ function packRadixLinkBuffer(data) {
 
 function unpackRadixLinkBuffer(buffer) {
 
-	var str = "";
 	var payloadSize = 0;
+	var offset      = 0;
 
-	//Payload is 32bit int
-	payloadSize = buffer.readInt32LE(SIZE_TYPE + SIZE_JOBID);
+	payloadSize = buffer.readInt32LE(SIZE_HEADER + SIZE_TYPE + SIZE_JOBID);
 
-	var offset = SIZE_TYPE + SIZE_JOBID + SIZE_PAYLOAD;
+	offset = SIZE_HEADER + SIZE_TYPE + SIZE_JOBID + SIZE_PAYLOAD;
 
 	var msg = buffer.slice(offset, offset + payloadSize)
+
+	// console.log("-----------------------------------------------------------------------------------------");
+	// console.log("----.... PAYLOAD_SIZE: " + payloadSize);
+	// console.log("----... BUFFER: ");
+	// console.log(buffer);
+	// console.log("-----------------------------------------------------------------------------------------");
+
+	// if(msg.toString().length == 1) {
+
+	// 	console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	// 	console.log("!!!.... PAYLOAD_SIZE: " + payloadSize);
+	// 	console.log("!!!.... BUFFER: ");
+	// 	console.log(buffer);
+	// 	console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+	// }
 
 	return msg.toString();
 
