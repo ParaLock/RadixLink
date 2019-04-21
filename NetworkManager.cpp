@@ -147,7 +147,7 @@ void NetworkManager::customShutdown() {
     }
 }
 	
-bool NetworkManager::write(std::string nodeName, Buffer& buff) {
+bool NetworkManager::write(std::string nodeName, Buffer& buff, bool updateState = true) {
 
     auto itr = m_connections.find(nodeName);
 
@@ -174,8 +174,11 @@ bool NetworkManager::write(std::string nodeName, Buffer& buff) {
 
     transmission.write((char*)&size, sizeof(unsigned int));
     transmission.write(buff.getBase(), buff.getSize());
-    
+
 	//send( con.socket, (char*)&size, sizeof(unsigned int), 0);
+
+    if(updateState)
+        m_stateReg.updateState("writing_too", nodeName);
 
     do {
 
@@ -192,13 +195,16 @@ bool NetworkManager::write(std::string nodeName, Buffer& buff) {
 
     } while(bytesSent < size);
 	
+    if(updateState)
+        m_stateReg.updateState("writing_too", "stopped" + std::string("@") + nodeName);
+
     printf("Bytes sent: %ld\n", bytesSent);
 	
 
 	return true;
 }
 
-bool NetworkManager::read(std::string nodeName, Buffer& buff) {
+bool NetworkManager::read(std::string nodeName, Buffer& buff, bool updateState = true) {
 
     auto itr = m_connections.find(nodeName);
 
@@ -235,6 +241,9 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
 
     int iResult;
 
+    if(updateState)
+        m_stateReg.updateState("reading_from", nodeName);            
+
     do {
         iResult = recv(con.socket, buff.getBase() + bytesReceived, realSize - bytesReceived, 0);
 
@@ -242,13 +251,17 @@ bool NetworkManager::read(std::string nodeName, Buffer& buff) {
             
             std::cout << "NetManager: communications error: node: " << nodeName << std::endl; 
 
-            return false;
+            break;
         }
 
         bytesReceived += iResult;
 
     }  while(bytesReceived < realSize);
 	
+    if(updateState)
+        m_stateReg.updateState("reading_from", "stopped" + std::string("@") + nodeName);
+
+
     printf("Bytes Received: %ld\n", bytesReceived);
 	
 
@@ -394,13 +407,13 @@ void NetworkManager::monitoringLoop() {
         m_encoder.run(out_buff, monitorResponses);
 
         if(monitorResponses.size() > 0)
-            write("127.0.0.1", out_buff);
+            write("127.0.0.1", out_buff, false);
 
         Buffer in_buff;
         std::vector<Resource> monitorRequests;
 
         
-		if (read("127.0.0.1", in_buff)) {
+		if (read("127.0.0.1", in_buff, false)) {
 
 			m_decoder.run(in_buff, monitorRequests);
 
@@ -437,25 +450,22 @@ void NetworkManager::execute() {
 
         if(dataReady(m_activeConnections[i])) {
             
-            m_stateReg.updateState("reading_from", m_activeConnections[i]);
 
-            readSomeData = true;
-        }
+            if(read(m_activeConnections[i], buff)) {
+
+                m_decoder.run(buff, resources);
+                
+                for(int i = 0; i < resources.size(); i++) {
+
+                    std::cout << "NetManager: resource received over network: " << resources[i].type << std::endl;
+                }
+
+                putResources(resources, "primary");
             
-		if(read(m_activeConnections[i], buff)) {
+            } else {
 
-            m_decoder.run(buff, resources);
-            
-            for(int i = 0; i < resources.size(); i++) {
-
-                std::cout << "NetManager: resource received over network: " << resources[i].type << std::endl;
+                std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
             }
-
-            putResources(resources, "primary");
-        
-        } else {
-
-            std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
         }
 	}
 
@@ -501,20 +511,14 @@ void NetworkManager::execute() {
 
             std::cout << "NetManager: sending multi-cast resources..." << std::endl;
 
-            m_stateReg.updateState("writing_too", m_activeConnections[i]);
-
             if(!write(m_activeConnections[i], generalBuff)) {
 
                 std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
             }
 
             writeSomeData = true;
-
-            //m_stateReg.updateState("writing_too", std::string("stopped"));
             
         }
-
-        //m_stateReg.updateState("writing_too", std::string("stopped"));
     }
 
     for(int i = 0; i < targeted.size(); i++) {
@@ -526,19 +530,9 @@ void NetworkManager::execute() {
         if(!write(targets[i], targeted[i])) {
             
             std::cout << "NetManager: node " << targets[i] << " communication failure... " << std::endl;
+
+            continue;
         }
-
-        writeSomeData = true;
-    }
-
-    if(readSomeData) {
-
-        m_stateReg.updateState("reading_from", std::string("stopped"));
-    }
-
-    if(writeSomeData) {
-
-        m_stateReg.updateState("writing_too", std::string("stopped"));
     }
 
     if(isRunning()) {

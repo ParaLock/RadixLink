@@ -113,8 +113,8 @@ public:
 
 	void monitoringLoop();
 
-	bool write(std::string nodeName, Buffer& buff);
-	bool read(std::string nodeName, Buffer& buff);
+	bool write(std::string nodeName, Buffer& buff, bool updateState);
+	bool read(std::string nodeName, Buffer& buff, bool updateState);
 	
 	bool createServer(std::string ip,const char* port);
 	void acceptConnection();

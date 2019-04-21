@@ -96,36 +96,67 @@
 
             function resetVisualization() {
 
-                var myNode = nodes.get(nodeIdByIP["127.0.0.1"]);
+                // var myNode = nodes.get(nodeIdByIP["127.0.0.1"]);
 
-                myNode.color = {
+                // myNode.color = {
+                //     background: '#97C2FC'
+                // }
+
+                // nodes.update(myNode);
+
+                // var len = nodesToReset.length;
+
+                // for(var i = 0; i < len; i++) {
+
+                //     var lastNode = nodesToReset.shift();
+
+                //     lastNode.color = {
+                //         background: "#97C2FC"
+                //     }
+                //     nodes.update(lastNode);
+                // }
+
+                // len = edgesToReset.length;
+
+                // for(var i = 0; i < len; i++) {
+
+                //     var lastEdge = edgesToReset.shift();
+
+                //     lastEdge.label = ' ';
+
+                //     edges.update(lastEdge);
+                // }
+
+                // network.body.emitter.emit('_dataChanged');
+                // network.redraw();
+            }
+
+            function getEdgesOfNode(nodeId) {
+
+                return edges.get().filter(function (edge) {
+                    return edge.from === nodeId || edge.to === nodeId;
+                });
+            }
+
+            function resetNodeVisualization(ip) {
+
+                var node = nodes.get(nodeIdByIP["127.0.0.1"]);
+
+                node.color = {
                     background: '#97C2FC'
                 }
 
-                nodes.update(myNode);
+                var nodeEdges = getEdgesOfNode(node);
 
-                var len = nodesToReset.length;
+                for(var i = 0; i < nodeEdges.length; i++) {
 
-                for(var i = 0; i < len; i++) {
-
-                    var lastNode = nodesToReset.shift();
-
-                    lastNode.color = {
-                        background: "#97C2FC"
-                    }
-                    nodes.update(lastNode);
-                }
-
-                len = edgesToReset.length;
-
-                for(var i = 0; i < len; i++) {
-
-                    var lastEdge = edgesToReset.shift();
+                    var lastEdge = nodeEdges.shift();
 
                     lastEdge.label = ' ';
 
                     edges.update(lastEdge);
                 }
+
 
                 network.body.emitter.emit('_dataChanged');
                 network.redraw();
@@ -247,6 +278,7 @@
                         visualizeIO(writingToo, "#70db6d", "#0080ff", "Writing...");
 
                         writeLog("Writing to Node: " + writingToo);
+
                     }
                     
                     if(isIPAddress(readingFrom)) {
@@ -254,17 +286,48 @@
                         visualizeIO(readingFrom, "#0080ff", "#70db6d", "Reading...");
 
                         writeLog("Reading from Node: " + readingFrom);
+                    
                     }
 
-                    if(writingToo == "stopped") {
+                    var stopReadingFrom = readingFrom.split('@');
+                    var stopWritingToo  = writingToo.split('@');
+                     
+                    console.log(stopReadingFrom);
+                    console.log(stopWritingToo);
+
+                    if(stopReadingFrom.length == 2) {
+
+
+                        //resetNodeVisualization(stopReadingFrom[1]);
+                        visualizeIO(stopReadingFrom[1], "#97C2FC", "#97C2FC", " ");
+
+                        
+                        console.log("RESETING READ ANIM: " + stopReadingFrom[1]);
+
+                        readStopped = true;
+                    }
+
+                    if(stopWritingToo.length == 2) {
+
+                        //resetNodeVisualization(stopWritingToo[1]);
+                        
+                        visualizeIO(stopWritingToo[1], "#97C2FC", "#97C2FC", " ");
+
+
+                        console.log("RESETING WRITE ANIM: " + stopWritingToo[1]);
 
                         writeStopped = true;
                     }
 
-                    if(readingFrom == "stopped") {
+                    // if(writingToo == "stopped") {
+                        
+                    //     writeStopped = true;
+                    // }
 
-                        readStopped = true;
-                    }
+                    // if(readingFrom == "stopped") {
+
+                    //     readStopped = true;
+                    // }
 
                     if(writeStopped && readStopped) {
                         
@@ -321,7 +384,6 @@
 
                     codeFn = prompt("Code File: ");
                     dataFn = prompt("Data File: ");
-                    jobName = prompt("Job name: ");
 
                     var parser = new MsgParser;
 
@@ -451,7 +513,7 @@
                     
                     sendRequest(parser.getMessage());
 
-                }.bind(this), 700);
+                }.bind(this), 150);
 
                 setInterval(function() {
 

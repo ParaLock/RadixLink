@@ -175,7 +175,7 @@ struct Job {
 			}
 
 			std::sort(sortedResults.begin(), sortedResults.end(), [](Resource* a, Resource* b) {
-				return a->order > b->order;   
+				return a->order < b->order;   
 			});
 
 			std::vector<Buffer*> temp;
