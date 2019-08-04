@@ -6,11 +6,12 @@
 #include "Encoder.h"
 #include "IDispatcher.h"
 #include "Resource.h"
-#include "TaskQueue.h"
+#include "TaskExecutor.h"
 #include "WebMsgParser.h"
 
 #include "NetworkManager.h"
 #include "JobManager.h"
+
 
 class NodeManager : public Manager<NodeManager> {
 private:
@@ -19,7 +20,7 @@ private:
     JobManager&     m_jobMan;
 
 public:
-    NodeManager(IDispatcher& dispatcher, TaskQueue& queue, StateRegistry& reg, NetworkManager& netMan, JobManager& jobMan) 
+    NodeManager(IDispatcher& dispatcher, TaskExecutor& queue, StateRegistry& reg, NetworkManager& netMan, JobManager& jobMan) 
 		: Manager(dispatcher, queue, reg, "node_manager", false),
         m_netMan(netMan),
         m_jobMan(jobMan)
@@ -68,7 +69,7 @@ public:
 
             if(op == "get_active_nodes") {
             
-                auto& nodes = m_netMan.getActiveNodes();
+                auto nodes = m_netMan.getActiveNodes();
 
                 parser.reset();
 
@@ -88,7 +89,7 @@ public:
 
                 int jobID = -1;
 
-                if(!m_jobMan.createJob(codeFn, dataFn, jobName, activeNodes, jobID)) {
+                if(!m_jobMan.createJob(codeFn, dataFn, JOB_TYPE_DLL, activeNodes, jobID)) {
 
                     status = "failed";
                 } else {

@@ -5,11 +5,15 @@
 #include "NetworkManager.h"
 #include "JobManager.h"
 #include "ConfigLoader.h"
-#include "TaskQueue.h"
+#include "TaskExecutor.h"
 #include "NodeManager.h"
 #include "StateRegistry.h"
 
+#include "jobtypes/DllJob.h"
+
 #include <iostream>
+
+#define JOB_TYPE_DLL 0
 
 int main(int argc, char **argv) {
 
@@ -35,7 +39,7 @@ int main(int argc, char **argv) {
 
         std::cout << "Decoder: Code section detected! " << "payload size: " << header->payloadSize << std::endl;
         
-        resource.codeFn = std::to_string(resource.jobID) + std::string(".dll");
+        resource.codeFn = std::to_string(resource.jobID) + std::string(".code");
         
         std::ofstream binFile(resource.codeFn, std::ios::out | std::ios::binary);
         
@@ -44,7 +48,7 @@ int main(int argc, char **argv) {
             
             binFile.write(payload, header->payloadSize);
         }
-
+        resource.jobType = header->jobType;
         resource.destManager = "job_manager";
     });
 
@@ -53,7 +57,7 @@ int main(int argc, char **argv) {
         std::cout << "Decoder: Job section detected!" << " payload size: " << header->payloadSize << std::endl;
         
         resource.info = *(JobInfo*)payload;
-        
+        resource.jobType = header->jobType;
         resource.destManager = "job_manager";
     });
 
@@ -62,7 +66,7 @@ int main(int argc, char **argv) {
         std::cout << "Decoder: Data section detected!" << " payload size: " << header->payloadSize << std::endl;
 
         resource.buff.write(payload, header->payloadSize);
-
+        resource.jobType = header->jobType;
         resource.destManager = "job_manager";
     });
 
@@ -82,7 +86,7 @@ int main(int argc, char **argv) {
         temp += sizeof(unsigned int);
 
         resource.buff.write(temp, header->payloadSize - sizeof(resource.target));
-        
+        resource.jobType = header->jobType;
         resource.destManager = "job_manager";
     });
 
@@ -90,7 +94,9 @@ int main(int argc, char **argv) {
 
         std::cout << "Decoder: Status section detected!" << " payload size: " << header->payloadSize << std::endl;
         
+        
         resource.buff.write(payload, header->payloadSize);
+        resource.jobType = header->jobType;
 
         resource.target[0] = '1';
         resource.target[1] = '2';
@@ -114,6 +120,8 @@ int main(int argc, char **argv) {
         header.type        = resource.type;
         header.payloadSize = resource.buff.getSize();
         header.jobID       = resource.jobID;
+        header.jobType     = resource.jobType;
+
 
         buff.write((char*)&header, sizeof(EncoderHeader));
         buff.write(resource.buff.getBase(), header.payloadSize);
@@ -128,6 +136,7 @@ int main(int argc, char **argv) {
         header.type        = resource.type;
         header.payloadSize = sizeof(decltype(resource.info));
         header.jobID       = resource.jobID;
+        header.jobType     = resource.jobType;
 
         buff.write((char*)&header, sizeof(EncoderHeader));
         buff.write((char*)&resource.info, sizeof(decltype(resource.info)));
@@ -142,6 +151,7 @@ int main(int argc, char **argv) {
         header.type        = resource.type;
         header.payloadSize = resource.buff.getSize();
         header.jobID       = resource.jobID;
+        header.jobType     = resource.jobType;
 
         buff.write((char*)&header, sizeof(EncoderHeader));
         buff.write(resource.buff.getBase(), header.payloadSize);
@@ -158,6 +168,7 @@ int main(int argc, char **argv) {
         header.type         = resource.type;
         header.payloadSize  = resource.buff.getSize() + sizeof(resource.target) + sizeof(resource.order);
         header.jobID        = resource.jobID;
+        header.jobType     = resource.jobType;
 
         buff.write((char*)&header, sizeof(EncoderHeader));
         buff.write((char*)&resource.target, sizeof(resource.target));
@@ -174,6 +185,7 @@ int main(int argc, char **argv) {
         header.type         = resource.type;
         header.payloadSize  = resource.buff.getSize();
         header.jobID        = resource.jobID;
+        header.jobType     = resource.jobType;
 
 
         if(resource.buff.getSize() < 5) {
@@ -190,11 +202,55 @@ int main(int argc, char **argv) {
 
     StateRegistry stateReg(50);
     Dispatcher    dispatcher;
-    TaskQueue     taskQueue;
+    TaskExecutor     TaskExecutor;
 
-    NetworkManager netMan(dispatcher, taskQueue, stateReg, decoder, encoder);
-    JobManager     jobMan(dispatcher, taskQueue, netMan, stateReg);
-    NodeManager    nodeMan(dispatcher, taskQueue, stateReg, netMan, jobMan);
+    TaskExecutor.createQueue("test_queue", 4);
+
+    TaskExecutor.addTask(Task("test_queue", []() {
+
+        std::cout << "TEST COMPLETED1!" << std::endl;
+
+    }, []() {} ));
+
+    TaskExecutor.addTask(Task("test_queue", []() {
+
+        Sleep(3000);
+
+        std::cout << "TEST COMPLETED2!" << std::endl;
+
+    }, []() {} ));
+
+    TaskExecutor.addTask(Task("test_queue", []() {
+
+        Sleep(100);
+
+        std::cout << "TEST COMPLETED3!" << std::endl;
+
+    }, []() {} ));
+
+    TaskExecutor.addTask(Task("test_queue", []() {
+
+        Sleep(50);
+
+        std::cout << "TEST COMPLETED4!" << std::endl;
+
+    }, []() {} ));
+
+    TaskExecutor.addTask(Task("test_queue", []() {
+
+        std::cout << "TEST COMPLETED5!" << std::endl;
+
+    }, []() {} ));
+
+    NetworkManager netMan(dispatcher, TaskExecutor, stateReg, decoder, encoder);
+    JobManager     jobMan(dispatcher, TaskExecutor, netMan, stateReg);
+    NodeManager    nodeMan(dispatcher, TaskExecutor, stateReg, netMan, jobMan);
+
+    jobMan.registerJobType([]() {
+
+        return new DllJob();
+        
+    }, JOB_TYPE_DLL);
 
     std::map<int, std::function<void()>> primary_actions;
 
@@ -215,7 +271,7 @@ int main(int argc, char **argv) {
 
         int jobID = -1;
 
-        if(!jobMan.createJob(codeFn, data, "run", netMan.getActiveNodes(), jobID)) {
+        if(!jobMan.createJob(codeFn, data, JOB_TYPE_DLL, netMan.getActiveNodes(), jobID)) {
 
             std::cout << "App: Job creation failed!" << std::endl;
         }
@@ -249,12 +305,14 @@ int main(int argc, char **argv) {
             std::string policy;
             conf.getScaler("policy", policy);
 
+            netMan.setDebugMode(policy);
+
             //First ip address is always "this" node...
             netMan.createServer(ipList[0], DEFAULT_PORT);
         
             for(int i = 1; i < ipList.size(); i++) {
 
-                if(!netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT, false)) {
+                if(!netMan.connectToNode(ipList[i].c_str(), DEFAULT_PORT)) {
                     std::cout << "Adding pending connection..." << std::endl;
                 }
             }
@@ -270,6 +328,16 @@ int main(int argc, char **argv) {
     jobMan.start();
     nodeMan.start();
 
+    primary_actions.insert({9, [&netMan]() {
+
+        netMan.testRead();
+    }});
+
+    primary_actions.insert({10, [&netMan]() {
+
+        netMan.testWrite();
+    }});
+
     primary_actions.insert({6, []{}});
 
     int op = 0;
@@ -281,6 +349,8 @@ int main(int argc, char **argv) {
         std::cout << "3) See Current Incoming Jobs" << std::endl;
         std::cout << "4) View Job Result" << std::endl;
         std::cout << "5) Load Configuration" << std::endl;
+        std::cout << "9) test read" << std::endl;
+        std::cout << "10) test write" << std::endl;
         std::cout << "6) Exit" << std::endl;
     
         std::cin >> op;
@@ -298,11 +368,9 @@ int main(int argc, char **argv) {
     jobMan.stop();
     nodeMan.stop();
     
-    taskQueue.stop();
+    TaskExecutor.stop();
 
     WSACleanup();
-
-
 
    return 0;
 }

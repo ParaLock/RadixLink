@@ -10,18 +10,26 @@
 
 class JobManager : public Manager<JobManager> {
 private:
-	std::map<int, Job> m_currentIncomingJobs;
-    std::map<int, Job> m_currentOutgoingJobs;
+	std::map<int, Job*> m_currentIncomingJobs;
+    std::map<int, Job*> m_currentOutgoingJobs;
 
     NetworkManager& m_netMan;
 
+
+    std::map<unsigned int, std::function<Job*()>> m_jobFactories;
+
 public:
 
-	JobManager(IDispatcher& dispatcher, TaskQueue& taskQueue, NetworkManager& netMan, StateRegistry& reg) 
-        : Manager(dispatcher, taskQueue, reg, "job_manager", false), m_netMan(netMan)
+	JobManager(IDispatcher& dispatcher, TaskExecutor& TaskExecutor, NetworkManager& netMan, StateRegistry& reg) 
+        : Manager(dispatcher, TaskExecutor, reg, "job_manager", false), m_netMan(netMan)
           
     {
         m_stateReg.addState<std::string>("running_job", "none");
+    }
+
+    void registerJobType(std::function<Job*()> createFunc, unsigned int type) {
+
+        m_jobFactories[type] = createFunc;
     }
 
     void execute() {
@@ -41,7 +49,7 @@ public:
                 if(itr != m_currentOutgoingJobs.end()) {
                     
                     resources[i].destManager = "net_manager";
-                    itr->second.addResource(resources[i]);
+                    itr->second->addResource(resources[i]);
 
                     continue;
                 }
@@ -53,15 +61,17 @@ public:
                 
                 std::cout << "JobManager: Creating new Job: " << resources[i].jobID << std::endl;
 
-                Job job;
-                job._isRemoteInstance = true;
+                Job* job = m_jobFactories[resources[i].jobType]();
+
+                job->jobType = resources[i].jobType;
+                job->_isRemoteInstance = true;
 
                 m_currentIncomingJobs.insert({resources[i].jobID, job});
             }
 
             std::cout << "JobManager: Adding resource to job: " << resources[i].jobID << std::endl;
 
-            Job& job = m_currentIncomingJobs.at(resources[i].jobID);
+            Job& job = *m_currentIncomingJobs.at(resources[i].jobID);
 
             job.addResource(resources[i]); 
             
@@ -69,12 +79,12 @@ public:
 
         for (auto it = m_currentIncomingJobs.begin(); it != m_currentIncomingJobs.end(); it++ ) {
             
-            if(it->second.isRunnable() && !it->second.isComplete()) {
+            if(it->second->isRunnable() && !it->second->isComplete()) {
 
-                it->second.execute();
+                it->second->execute();
 
                 std::vector<Resource> temp;
-                temp.push_back(it->second.getResult());
+                temp.push_back(it->second->getResult());
 
                 this->putResources(temp, "primary");
             }
@@ -85,7 +95,7 @@ public:
         
         std::cout << "Printing results of job " << jobID << " -> "<< std::endl;
 
-        Job& job = m_currentOutgoingJobs.at(jobID);
+        Job& job = *m_currentOutgoingJobs.at(jobID);
 
         std::vector<Resource>& results = job.getResults();
 
@@ -105,7 +115,7 @@ public:
             return false;
         }
 
-        Job& job = m_currentOutgoingJobs.at(jobID);
+        Job& job = *m_currentOutgoingJobs.at(jobID);
 
         std::ofstream binFile(std::to_string(jobID) + "_final_result", std::ios::out | std::ios::binary);
         
@@ -124,7 +134,7 @@ public:
 
     }
 
-    bool createJob(std::string codeFn, std::string dataFn, std::string jobName, std::vector<std::string> availableNodes, int& jobIDOut) {
+    bool createJob(std::string codeFn, std::string dataFn, unsigned int jobType, std::vector<std::string> availableNodes, int& jobIDOut) {
 
         int jobID = rand();
 
@@ -132,23 +142,16 @@ public:
 
         std::cout << "Creating job: " << jobID << std::endl;
 
-        Job newJob;
-        newJob.id = jobID;
-        newJob._isRemoteInstance = false;
-        newJob.m_codeFn = codeFn;
+        Job* newJob = m_jobFactories[jobType]();
+
+        newJob->jobType = jobType;
+        newJob->id = jobID;
+        newJob->_isRemoteInstance = false;
+        newJob->m_codeFn = codeFn;
 
         std::vector<Buffer> segments;
 
         std::cout << "JobManager: segmenting data..." << std::endl;
-
-        DllLoader dllLoader;
-
-        if(!dllLoader.load(codeFn)) {
-
-            std::cout << "JobManager: Failed to load segmentor! in " << codeFn << std::endl;
-
-            return false; 
-        } 
 
         Buffer jobData;
 
@@ -159,84 +162,18 @@ public:
             return false;
         }
 
-        auto& activeNodes = m_netMan.getActiveNodes();
-
-        auto getInput = [&jobData](char*& src, size_t& size) {
-
-            src = jobData.getBase();
-            size = jobData.getSize();
-        };
-
-		auto writeSegment = [&segments](char* src, size_t size, int seg) {
-
-            std::cout << "JobManager: writeSegment: seg: " << seg << " size: " << size << " existing segments: " << " pointer: " << static_cast<void*>(src) << segments.size() << std::endl;
-
-			while (segments.size() < seg + 1) {
-
-                std::cout << "JobManager: writeSegment: creating new segment! seg: " << seg << std::endl;
-
-				segments.push_back(Buffer());
-			}
-
-			Buffer& buff = segments.at(seg);
-
-			buff.write(src, size);
-		};
-        
-        auto getSegment = [&segments](char*& src, size_t& size, int seg) {
-
-            std::cout << "JobManager: getSegment: seg: " << seg << std::endl;
-
-			while (segments.size() < seg + 1) {
-                
-                std::cout << "JobManager: getSegment: creating new segment! seg: " << seg << std::endl;
-
-				segments.push_back(Buffer());
-			}
-
-			Buffer& buff = segments.at(seg);
-
-            size = buff.getSize();
-            src  = buff.getBase();
-		};
-
-        auto expandSegment = [&segments](size_t size, int seg) {
-
-			while (segments.size() < seg + 1) {
-
-                std::cout << "JobManager: expandSegment: creating new segment! seg: " << seg << std::endl;
-
-				segments.push_back(Buffer());
-			}
-
-			Buffer& buff = segments.at(seg);
-
-			buff.resize(buff.getSize() + size);
-		};
-
-        if(!dllLoader.call<
-                            int,
-                            std::function<void(char*&, size_t&)>,
-                            std::function<void(char*&, size_t&, int)>,
-                            std::function<void(size_t, int)>,
-                            std::function<void(char*, size_t, int)>
-                            >(
-			"segmentData", activeNodes.size(), getInput, getSegment, expandSegment, writeSegment)) {
-
-            std::cout << "JobManager: Failed to run job segmentor routine!" << std::endl;
-
-            return false;
-        }
-
-        newJob.setNumSegments(segments.size());
-
-        std::cout << "JobManager: num segments: " << segments.size() << std::endl;
-        std::cout << "JobManager: num available nodes" << availableNodes.size() << std::endl;
-
+        auto activeNodes = m_netMan.getActiveNodes();
 
         if(availableNodes.size() < segments.size()) {
             
             std::cout << "JobManager: Not enough nodes to process entire job..." << std::endl;
+
+            return false;
+        }
+
+        if(!newJob->segmentData(jobData, codeFn, availableNodes.size(), segments)) {
+
+            std::cout << "JobManager: Failed to segment job data" << std::endl;
 
             return false;
         }
@@ -249,7 +186,7 @@ public:
 
             JobInfo info;
 
-            strcpy(info.jobName, jobName.c_str());
+            strcpy(info.jobName, "null");
     
             Resource code_resource;
             Resource data_resource;
@@ -258,6 +195,7 @@ public:
 
             job_resource.type          = RESOURCE_TYPE_JOB;
             job_resource.jobID         = jobID;
+            job_resource.jobType       = jobType;
             job_resource.info          = info;
             job_resource.destManager   = "net_manager";
 
@@ -270,16 +208,19 @@ public:
 
             code_resource.type          = RESOURCE_TYPE_CODE;
             code_resource.jobID         = jobID;
-            code_resource.codeFn        = std::to_string(jobID) + std::string(".dll");
+            code_resource.jobType       = jobType;
+            code_resource.codeFn        = std::to_string(jobID) + std::string(".code");
             code_resource.destManager   = "net_manager";
 
             data_resource.type          = RESOURCE_TYPE_DATA;
             data_resource.jobID         = jobID;
+            data_resource.jobType       = jobType;
             data_resource.destManager   = "net_manager";
             data_resource.order         = order;
 
             result_resource.type        = RESOURCE_TYPE_RESULT;
             result_resource.jobID = jobID;
+            result_resource.jobType       = jobType;
             result_resource.destManager = "net_manager";
 
             data_resource.buff = segments[i];

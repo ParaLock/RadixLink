@@ -17,6 +17,7 @@
 #include <map>
 #include <string>
 #include <iostream>
+#include <set>
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27016"
@@ -27,9 +28,11 @@
 #include "Encoder.h"
 #include "IDispatcher.h"
 #include "Resource.h"
-#include "TaskQueue.h"
+#include "StreamGroup.h"
+#include "TaskExecutor.h"
 
 const unsigned int MAX_BLOCK_SIZE = 512; 
+const unsigned int MAX_IO_THREADS = 4;
 
 class NetworkManager : public Manager<NetworkManager> {
 private:
@@ -48,11 +51,7 @@ private:
 		}
 	};
 
-	std::map<std::string, Connection> 		 		  m_connections;
-
-	std::vector<std::pair<std::string, std::string>>  m_pendingConnections;
-	std::vector<std::string>	             		  m_deadConnections;
-	std::vector<std::string>      			 		  m_activeConnections;
+	std::set<std::string>						      m_activeConnections;
 	
 
 	SOCKET  					  			 		  m_listenSocket;
@@ -62,39 +61,46 @@ private:
 	bool 											  m_connecting;
 	std::string 							 		  m_name;
 
+	std::string										  m_debugMode;
+
 	bool 									          m_monitorConnected;
+
+	NetIO::StreamGroup                                m_ioGroup;
 
 	Decoder&     						     	 	  m_decoder;
 	Encoder&     						     		  m_encoder;
 
 public:
 	
-	NetworkManager(IDispatcher& dispatcher, TaskQueue& queue, StateRegistry& reg, Decoder& decoder, Encoder& encoder) 
-		: Manager(dispatcher, queue, reg, "net_manager", true),
+	NetworkManager(IDispatcher& dispatcher, TaskExecutor& executor, StateRegistry& reg, Decoder& decoder, Encoder& encoder) 
+		: Manager(dispatcher, executor, reg, "net_manager", false),
 		  m_decoder(decoder),
-		  m_encoder(encoder)
+		  m_encoder(encoder),
+		  m_ioGroup(executor)
 		  
 	{
+		m_debugMode = "";
+
 		m_listenSocket = INVALID_SOCKET;
 		m_serverCreated = false;
 		m_listening     = true;
 		m_connecting    = true;
 		m_monitorConnected = false;
 		
-		
 		m_stateReg.addState<std::string>("writing_too", "none");
 		m_stateReg.addState<std::string>("reading_from", "none");
 		
-		queue.addTask(Task(
+		m_workExecutor.createQueue("net_monitoring", 1);
+		m_workExecutor.createQueue("net_connection", 1);
+		m_workExecutor.createQueue("net_listen_thread", 1);
+		
+		executor.addTask(Task(
 			"net_listen_thread",
 			std::bind(&NetworkManager::acceptConnection, this)
 		));
 
+		//SecureZeroMemory(&testOverlapped, sizeof(testOverlapped));
 
-		queue.addTask(Task(
-			"net_monitoring_thread",
-			std::bind(&NetworkManager::monitoringLoop, this)
-		));
 	}
 
 	~NetworkManager() {
@@ -102,14 +108,17 @@ public:
 
 	}
 
-	std::vector<std::string>& getActiveNodes();
+	std::string testSocket;
 
-	bool dataReady(std::string socket);
+	void testRead();
 
-	bool connectToNode(const char* target, const char* port, bool isSingleton);
+	void testWrite();
+	std::vector<std::string> getActiveNodes();
+
+	bool connectToNode(const char* target, const char* port);
 	bool disconnect(std::string nodeName);
 	
-	void processConnection(std::string target, std::string port, bool isSingletor);
+	void processConnection(std::string target, std::string port);
 
 	void monitoringLoop();
 
@@ -122,5 +131,9 @@ public:
 	void customShutdown();
 
 	void execute();
-	
+
+	void setDebugMode(std::string mode) {
+		m_debugMode = mode;
+	}
+
 };

@@ -21,6 +21,7 @@ struct EncoderHeader {
 	unsigned int type;
 	unsigned int jobID;
 	unsigned int payloadSize;
+	unsigned int jobType;
 	
 }__attribute__((packed));
 
@@ -50,11 +51,12 @@ struct Encoder {
 		return true;
 	}
 
-	static bool run(char* src, unsigned int size, unsigned int jobID, unsigned int type, Buffer& buff) {
+	static bool run(char* src, unsigned int size, unsigned int jobID, unsigned int jobType, unsigned int type, Buffer& buff) {
 	
 		EncoderHeader header;
 		header.type = type;
 		header.jobID = jobID;
+		header.jobType = jobType;
 		header.payloadSize = size;
 		
 		buff.write((char*)&header, sizeof(EncoderHeader));
@@ -79,7 +81,7 @@ struct Encoder {
 			}
 
 			ifs.seekg(0, std::ios::beg);
-			ifs.read(buff.getCurrentOffset() - pos, pos);
+			ifs.read(buff.getCurrentOffsetPtr() - pos, pos);
 
 		} else {
 			

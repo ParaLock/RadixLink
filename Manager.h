@@ -4,7 +4,7 @@
 #include "Dispatcher.h"
 #include "Task.h"
 #include "StateRegistry.h"
-#include "TaskQueue.h"
+#include "TaskExecutor.h"
 #include <thread>
 #include <vector>
 #include <functional>
@@ -35,7 +35,7 @@ private:
 
 protected:
 
-    TaskQueue&            m_workQueue;
+    TaskExecutor&            m_workExecutor;
     std::string			  m_worker;
     StateRegistry&        m_stateReg;
 
@@ -45,9 +45,9 @@ protected:
 
 public:
 
-    Manager(IDispatcher& dispatcher, TaskQueue& taskQueue, StateRegistry& reg, std::string name, bool isPolling) : 
+    Manager(IDispatcher& dispatcher, TaskExecutor& taskExecutor, StateRegistry& reg, std::string name, bool isPolling) : 
             m_dispatcher(dispatcher), 
-            m_workQueue(taskQueue),
+            m_workExecutor(taskExecutor),
             m_stateReg(reg)
     {
 
@@ -57,6 +57,8 @@ public:
 		m_isPolling = isPolling;
 
         m_worker = name + "_main_thread";
+
+        m_workExecutor.createQueue(m_worker, 1);
 
         m_dispatcher.registerManager(m_name, this);
     }
@@ -82,7 +84,7 @@ public:
 
         if(isRunning() && !m_isPolling) {
 
-            m_workQueue.addTask(Task(
+            m_workExecutor.addTask(Task(
                 m_worker,
                 std::bind(&Manager<T>::execute, this)
             ));
@@ -119,7 +121,7 @@ public:
 
 		if (isRunning() && !m_isPolling) {
 
-			m_workQueue.addTask(Task(
+			m_workExecutor.addTask(Task(
 				m_worker,
 				std::bind(&Manager<T>::execute, this)
 			));
@@ -150,6 +152,27 @@ public:
 
         m_resLock.unlock();
 
+    }
+
+    void getResourcesByTarget(std::string target, int num, std::vector<Resource>& resources, std::string group) {
+        
+        m_resLock.lock();
+
+        std::string groupName = m_name + "-" + group;
+
+        createGroupIfNotPresent(groupName);
+
+        auto& resVec = m_resourceGroups.at(groupName);
+
+        for(int i = 0; i < num && resVec.size() > 0; i++) {
+
+            if(std::string(resVec.back().target) == target)
+                resources.push_back(std::move(resVec.back()));
+            
+            resVec.pop_back();
+        }
+
+        m_resLock.unlock();
     }
 
     int getNumPendingResources(std::string group) {
@@ -185,7 +208,7 @@ public:
 
         m_isRunning = true;
 
-        m_workQueue.addTask(Task(
+        m_workExecutor.addTask(Task(
             m_worker,
             std::bind(&Manager<T>::execute, this)
         ));

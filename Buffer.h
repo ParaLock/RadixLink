@@ -16,11 +16,49 @@ struct Buffer {
 
 		isLast = false;
 		seq    = 0;
+		lastOffset = 0;
 		//count = 0;
 		//count = size;
 	}
 
 	~Buffer() {	}
+
+	unsigned int readSeq(char* dest, unsigned int size) {
+
+		unsigned int count = 0;
+
+		if(size > data.size() - lastOffset) {
+
+			count = data.size() - lastOffset;
+		
+		} else {
+			
+			count = size;
+		}
+
+		memcpy(dest, getBase() + lastOffset, count);
+		lastOffset += count;
+
+		return count;
+	}
+
+	unsigned int read(char* dest, unsigned int size, unsigned int offset = 0) {
+
+		unsigned int count = 0;
+
+		if(size > data.size()) {
+
+			count = data.size();
+		
+		} else {
+			
+			count = size;
+		}
+
+		memcpy(dest, getBase() + offset, count);
+
+		return count;
+	}
 
 	void write(char* src, unsigned int size, bool incPos = true) {
 		
@@ -39,6 +77,11 @@ struct Buffer {
 		}
 	}
 	
+	unsigned int getCurrOffset() {
+
+		return lastOffset;
+	}
+
 	unsigned int getSize() {
 		
 		return data.size();
@@ -56,6 +99,7 @@ struct Buffer {
 	void clear() {
 
 		data.clear();
+		lastOffset = 0;
 	}
 
 	void resize(size_t num) {
@@ -63,7 +107,7 @@ struct Buffer {
 		data.resize(num);
 	}
 
-	char* getCurrentOffset() {
+	char* getCurrentOffsetPtr() {
 	
 		return &data[0] + data.size();
 	}
@@ -79,6 +123,7 @@ struct Buffer {
 	}
 	
 	bool         	  isLast;
+	unsigned int      lastOffset;
 	unsigned int 	  seq;
 	//size_t  		  count;
 	//size_t       	  size;

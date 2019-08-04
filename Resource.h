@@ -8,6 +8,7 @@ struct Resource {
 	std::string   		destManager;
 	
 	char               	target[50];
+	unsigned int        jobType;	
 
 	unsigned int  		jobID;
 	unsigned int        type;
@@ -17,6 +18,7 @@ struct Resource {
 	JobInfo 	info;
 	std::string codeFn;
 	std::string dataFn;
+
 	Buffer      buff;
 
 	Resource() {
@@ -24,10 +26,9 @@ struct Resource {
 		jobID = 0;
 		type  = -1;
 		order = 0;
+		jobType = -1;
 		destManager = "";
-
 		buff.clear();
-
 
 		target[0] = 'a';
 		target[1] = 'l';
@@ -39,6 +40,7 @@ struct Resource {
 		info = other.info;
 		jobID = other.jobID;
 		type = other.type;
+		jobType = other.jobType;
 		
 		buff = other.buff;
 		codeFn = other.codeFn;

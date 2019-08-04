@@ -31,6 +31,7 @@ struct Decoder {
 			
 			jobRes.type  = header->type;
 			jobRes.jobID = header->jobID;
+			jobRes.jobType = header->jobType;
 
 			char* payload = (char*)header + sizeof(EncoderHeader);
 			

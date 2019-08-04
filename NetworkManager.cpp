@@ -1,133 +1,231 @@
 
 #include "NetworkManager.h"
 
-bool NetworkManager::connectToNode(const char* target, const char* port, bool isSingleton = false) {
+// bool NetworkManager::connectToNodes(const char* target, const char* port) {
+
+//     std::string tempTarget = target;
+//     std::string tempPort   = port;
+
+//     //m_pendingConnections.push_back(std::make_pair(target, port));
+
+// 	return true;
+// }
+
+
+
+bool NetworkManager::connectToNode(const char* target, const char* port) {
 
     std::string tempTarget = target;
     std::string tempPort   = port;
 
-    //m_pendingConnections.push_back(std::make_pair(target, port));
+    m_workExecutor.addTask(Task(
+			"net_connection",
+            [tempTarget, tempPort, this]() {
 
-    m_workQueue.addTask(Task(
-			"net_connection_thread",
-            [tempTarget, tempPort, isSingleton, this]() {
-
-                this->processConnection(tempTarget, tempPort, isSingleton);
+                this->processConnection(tempTarget, tempPort);
             }
 	));
     
 	return true;
 }
 
-void NetworkManager::processConnection(std::string target, std::string port, bool isSingleton = false) {
+void NetworkManager::processConnection(std::string target, std::string port) {
 
-    Connection connection;
-    connection.ip = target;
-    connection.port = port;
 
-    SOCKET ConnectSocket = INVALID_SOCKET;
-    struct addrinfo *result = NULL,
-                    *ptr = NULL,
-                    hints;
-    int iResult;
+    while(true) {
 
-    ZeroMemory( &hints, sizeof(hints) );
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
+        Connection connection;
+        connection.ip = target;
+        connection.port = port;
 
-    // Resolve the server address and port
-    iResult = getaddrinfo(connection.ip.c_str(), connection.port.c_str(), &hints, &result);
+        SOCKET ConnectSocket = INVALID_SOCKET;
+        struct addrinfo *result = NULL,
+                        hints;
+        int iResult;
 
-    if ( iResult != 0 ) {
-        printf("getaddrinfo failed with error: %d\n", iResult);
-        return;
-    }
+        iResult = getaddrinfo(connection.ip.c_str(), connection.port.c_str(), NULL, &result);
+        if ( iResult != 0 ) {
 
-    // Attempt to connect to an address until one succeeds
-    for(ptr=result; ptr != NULL ;ptr=ptr->ai_next) {
+            printf("getaddrinfo failed with error: %d\n", iResult);
+            return;
+        }
 
-        // Create a SOCKET for connecting to server
-        ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, 
-            ptr->ai_protocol);
+        ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol); 
+
         if (ConnectSocket == INVALID_SOCKET) {
+
             printf("socket failed with error: %ld\n", WSAGetLastError());
             return;
         }
 
         // Connect to server.
-        iResult = connect( ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
-
+        iResult = connect( ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
 
         if (iResult == SOCKET_ERROR) {
+
             closesocket(ConnectSocket);
             ConnectSocket = INVALID_SOCKET;
             continue;
         }
+        if (iResult == SOCKET_ERROR) {
+
+            printf("socket failed with error: %ld\n", WSAGetLastError());
+            closesocket(ConnectSocket);
+            ConnectSocket = INVALID_SOCKET;
+            continue;
+        }
+
+        std::cout << "NetworkManager: Connected to node: " << target << std::endl;
+
+        connection.socket = ConnectSocket;
+
+        m_activeConnections.insert(target);
+
+        if(m_debugMode == "CLIENT") {
+
+                if (m_ioGroup.addStream(target, connection.socket)) {
+
+                    m_ioGroup.beginWrite(target, []() {
+
+                    },
+                        [this, target]() {
+                        
+                        std::cout << "STREAM WRITE: " << target << " BEGIN" << std::endl;
+
+
+                        Buffer out_buff;
+
+                        char testBuff[10]; 
+
+                        testBuff[0] = 'A';
+                        testBuff[1] = 'B';
+                        testBuff[2] = 'c';
+                        testBuff[3] = 'd';
+                        testBuff[4] = 'E';
+                        testBuff[5] = 'F';
+                        testBuff[6] = 'G';
+                        testBuff[7] = 'H';
+                        testBuff[8] = 'Q';
+                        testBuff[9] = 'P';
+                        
+                        out_buff.write(testBuff, sizeof(testBuff));
+
+                        // std::vector<Resource> resources;
+
+                        // this->getResourcesByTarget(target, 5, resources, "primary");
+
+                        // for (int i = 0; i < resources.size(); i++) {
+
+                        //     strcpy(resources[i].target, this->m_name.c_str());
+
+                        // }
+
+                        // this->m_encoder.run(out_buff, resources);
+
+                        std::cout << "STREAM WRITE: " << target << " END" << std::endl;
+
+                        return out_buff;
+                    });
+
+                    m_ioGroup.beginRead(target, [this, target](Buffer& data) {
+
+                        std::cout << "STREAM READ: " << target << " BEGIN" << std::endl;
+
+                        // std::vector<Resource> resources;
+
+                        // this->m_decoder.run(data, resources);
+                        // this->putResources(resources, "primary");
+
+                        data.print(); 
+
+                        std::cout << "STREAM READ: " << target << " END" << std::endl;
+                    },
+                    []() {
+
+
+
+                    });
+
+                    m_ioGroup.activate();
+
+                }
+
+            }
+
         break;
     }
 
-    if(ConnectSocket == SOCKET_ERROR) {
-
-        freeaddrinfo(result);
-        
-        std::string tempTarget = target;
-        std::string tempPort   = port;
-
-        m_workQueue.addTask(Task(
-                "net_connection_thread",
-                [tempTarget, tempPort, this]() {
-                    
-
-                    this->processConnection(tempTarget, tempPort);
-                }
-        ));
-
-        
-        return;
-    }
-
-    freeaddrinfo(result);
-    
-    SOCKADDR_IN client_info = {0};
-    int addrsize = sizeof(client_info);
-
-    int client_info_size = sizeof(client_info);
-    getpeername(ConnectSocket, (sockaddr*)&client_info, &client_info_size);
-    char *ip = inet_ntoa(client_info.sin_addr);
-    
-    std::cout << "NetworkManager: Connected to node: " << std::string(ip) << std::endl;
-
-    std::string name = std::string(ip);
-
-    connection.socket = ConnectSocket;
-
-    DWORD timeout = 2000;
-    setsockopt(connection.socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-
-    //m_connections.insert({name, connection});
-    m_connections.insert({name, connection});
-    
-   // std::cout << "NetManager: adding active node: " << name << std::endl;
-    //m_activeConnections.push_back(name);
 }
 
 bool NetworkManager::disconnect(std::string nodeName) {
 	
-	Connection con = m_connections.at(nodeName);
+	// Connection con = m_connections.at(nodeName);
 	
-	int iResult;
-	// shutdown the connection since no more data will be sent
-    iResult = shutdown(con.socket, SD_SEND);
-    if (iResult == SOCKET_ERROR) {
-        printf("shutdown failed with error: %d\n", WSAGetLastError());
-        closesocket(con.socket);
-        return false;
-    }
+	// int iResult;
+	// // shutdown the connection since no more data will be sent
+    // iResult = shutdown(con.socket, SD_SEND);
+    // if (iResult == SOCKET_ERROR) {
+    //     printf("shutdown failed with error: %d\n", WSAGetLastError());
+    //     closesocket(con.socket);
+    //     return false;
+    // }
 	
 	return true;
 	
 }
+
+void NetworkManager::testRead() {
+   
+
+    std::cout << "Running  read test! __START" << std::endl;
+
+    // testBuffInfo.len = sizeof(testBuff);
+    // testBuffInfo.buf = testBuff;
+    
+
+    // int result = WSASend(
+    //                             testSocket,
+    //                             &testBuffInfo,
+    //                             1,
+    //                             (LPDWORD)&testSent,
+    //                             0,
+    //                             (OVERLAPPED*)&testOverlapped,
+    //                             NULL
+    //                             );
+
+    // std::cout << "TEST Write End: Result: " << result << "Status: " << WSAGetLastError() << std::endl;
+
+    m_ioGroup.triggerRead(testSocket);
+
+    std::cout << "Running  read test! __END" << std::endl;
+}
+
+void NetworkManager::testWrite() {
+   
+
+    std::cout << "Running write test! __START" << std::endl;
+
+    // testBuffInfo.len = sizeof(testBuff);
+    // testBuffInfo.buf = testBuff;
+    
+
+    // int result = WSASend(
+    //                             testSocket,
+    //                             &testBuffInfo,
+    //                             1,
+    //                             (LPDWORD)&testSent,
+    //                             0,
+    //                             (OVERLAPPED*)&testOverlapped,
+    //                             NULL
+    //                             );
+
+    // std::cout << "TEST Write End: Result: " << result << "Status: " << WSAGetLastError() << std::endl;
+
+    m_ioGroup.triggerWrite(testSocket);
+
+    std::cout << "Running write test! __END" << std::endl;
+}
+
 
 void NetworkManager::customShutdown() {
 
@@ -137,158 +235,36 @@ void NetworkManager::customShutdown() {
     m_serverCreated    = false;
 
     std::cout << "NetworkManager: Closing listener Socket!" << std::endl;
-    closesocket(m_listenSocket);
+    //closesocket(m_listenSocket);
 
-    for (auto const& s : m_connections) {
+    //for (auto const& s : m_connections) {
 
         std::cout << "NetworkManager: Shutting down connection!" << std::endl;
 
-        closesocket(s.second.socket);
-    }
-}
-	
-bool NetworkManager::write(std::string nodeName, Buffer& buff, bool updateState = true) {
-
-    auto itr = m_connections.find(nodeName);
-
-    if(itr == m_connections.end()) {
-
-        std::cout << "NetManager: write: unknown node: " << nodeName << std::endl;
-
-        return false;
-    }
-
-	Connection con = m_connections.at(nodeName);
-	
-	unsigned int size = buff.getSize() + sizeof(unsigned int);
-    size_t bytesSent = 0;
-    int iResult = 0;
-
-    Buffer transmission;
-
-    // transmission.data.insert(
-    //   transmission.data.end(),
-    //   std::make_move_iterator(buff.data.begin()),
-    //   std::make_move_iterator(buff.data.end())
-    // );
-
-    transmission.write((char*)&size, sizeof(unsigned int));
-    transmission.write(buff.getBase(), buff.getSize());
-
-	//send( con.socket, (char*)&size, sizeof(unsigned int), 0);
-
-    if(updateState)
-        m_stateReg.updateState("writing_too", nodeName);
-
-    do {
-
-        iResult = send(con.socket, transmission.getBase() + bytesSent, size - bytesSent, 0);
-
-        if(iResult == SOCKET_ERROR) {
-            
-            std::cout << "NetManager: communications error: node: " << nodeName << std::endl; 
-
-            return false;
-        }
-
-        bytesSent += iResult;
-
-    } while(bytesSent < size);
-	
-    if(updateState)
-        m_stateReg.updateState("writing_too", "stopped" + std::string("@") + nodeName);
-
-    printf("Bytes sent: %ld\n", bytesSent);
-	
-
-	return true;
-}
-
-bool NetworkManager::read(std::string nodeName, Buffer& buff, bool updateState = true) {
-
-    auto itr = m_connections.find(nodeName);
-
-    if(itr == m_connections.end()) {
-
-        std::cout << "NetManager: read: unknown node: " << nodeName << std::endl;
-
-        return false;
-    }
-
-	Connection con = m_connections.at(nodeName);
-	
-	size_t bytesReceived = 0;
-	unsigned int size = 0;
-
-    u_long readableBytes = 0;
-	
-    ioctlsocket(con.socket, FIONREAD, &readableBytes);
-
-    if(readableBytes == 0) {
-
-         return true;
-    }
-
-    std::cout << "NetManager: Readable bytes on socket: " << readableBytes << std::endl;
-
-	recv(con.socket, (char*)&size, sizeof(unsigned int), 0);
-
-    unsigned int realSize = size - sizeof(unsigned int);
-
-    std::cout << "NetManager: Incoming buffer size: " << realSize << std::endl;
-	
-    buff.resize(realSize);
-
-    int iResult;
-
-    if(updateState)
-        m_stateReg.updateState("reading_from", nodeName);            
-
-    do {
-        iResult = recv(con.socket, buff.getBase() + bytesReceived, realSize - bytesReceived, 0);
-
-        if(iResult == SOCKET_ERROR) {
-            
-            std::cout << "NetManager: communications error: node: " << nodeName << std::endl; 
-
-            break;
-        }
-
-        bytesReceived += iResult;
-
-    }  while(bytesReceived < realSize);
-	
-    if(updateState)
-        m_stateReg.updateState("reading_from", "stopped" + std::string("@") + nodeName);
-
-
-    printf("Bytes Received: %ld\n", bytesReceived);
-	
-
-	return true;
+        //closesocket(s.second.socket);
+    //}
 }
 
 bool NetworkManager::createServer(std::string ip, const char* port) {
+
 
     struct addrinfo *result = NULL;
     struct addrinfo hints;
 	
 	int iResult;
 	
-	ZeroMemory(&hints, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    hints.ai_flags = AI_PASSIVE;
+	// ZeroMemory(&hints, sizeof(hints));
+    // hints.ai_family = AF_INET;
+    // hints.ai_socktype = SOCK_STREAM;
+    // hints.ai_protocol = IPPROTO_TCP;
+    // hints.ai_flags = AI_PASSIVE;
 
-    // Resolve the server address and port
-    iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
+    iResult = getaddrinfo(ip.c_str(), DEFAULT_PORT, NULL, &result);
     if ( iResult != 0 ) {
         printf("getaddrinfo failed with error: %d\n", iResult);
         return 1;
     }
 
-    // Create a SOCKET for connecting to server
     m_listenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (m_listenSocket == INVALID_SOCKET) {
         printf("socket failed with error: %ld\n", WSAGetLastError());
@@ -301,6 +277,14 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
     if (iResult == SOCKET_ERROR) {
         printf("bind failed with error: %d\n", WSAGetLastError());
         freeaddrinfo(result);
+        closesocket(m_listenSocket);
+        return 1;
+    }
+
+             
+    iResult = listen(m_listenSocket, SOMAXCONN);
+    if (iResult == SOCKET_ERROR) {
+        printf("listen failed with error: %d\n", WSAGetLastError());
         closesocket(m_listenSocket);
         return 1;
     }
@@ -322,226 +306,145 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
 void NetworkManager::acceptConnection() {
 	
     while(m_listening) {
-        
-        Connection con;
-
-        SOCKADDR_IN client_info = {0};
-        int addrsize = sizeof(client_info);
 
         if(m_serverCreated) {
-        
+            
+            Connection con;
+
+            SOCKADDR_IN client_info = {0};
+            int addrsize            = sizeof(client_info);
+
             SOCKET ClientSocket = INVALID_SOCKET;
             
-            int iResult;
-            
-            iResult = listen(m_listenSocket, SOMAXCONN);
-            if (iResult == SOCKET_ERROR) {
-                printf("listen failed with error: %d\n", WSAGetLastError());
-                closesocket(m_listenSocket);
-                continue;
-            }
-
-           // std::cout << "Client listen complete " << std::endl;
-
             // Accept a client socket
             ClientSocket = accept(m_listenSocket, (struct sockaddr*)&client_info, &addrsize);
             if (ClientSocket == INVALID_SOCKET) {
+
                 printf("accept failed with error: %d\n", WSAGetLastError());
+
                 closesocket(m_listenSocket);
-                continue;
+
+                return;
             }
             
-            char *ip = inet_ntoa(client_info.sin_addr);
+            std::string ip = std::string(inet_ntoa(client_info.sin_addr));
 
             con.socket = ClientSocket;
-            con.ip = ip;
+            con.ip     = ip;
 
-            DWORD timeout = 2000;
-            setsockopt(con.socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+            std::cout << "NetworkManager: Client " << ip << " connected" << std::endl;
 
-            std::cout << "NetworkManager: Client " << std::string(ip) << " connected" << std::endl;
+            // if(name == "127.0.0.1") {
 
-            std::string name = std::string(ip);
-
-            if(name == "127.0.0.1") {
-
-                m_monitorConnected = true;
+            //     m_monitorConnected = true;
                 
-                m_connections.insert({name, con});
+            //     m_activeConnections.insert(ip);
 
-                continue;
+            //     continue;
+            // }
+
+            testSocket = ip;
+            std::string target = ip;
+
+            m_activeConnections.insert(ip);
+
+            if(m_debugMode == "SERVER") {
+
+                if (m_ioGroup.addStream(target, con.socket)) {
+
+                    m_ioGroup.beginWrite(target, []() {
+
+                    },
+                        [this, target]() {
+                        
+                        std::cout << "STREAM WRITE: " << target << " BEGIN" << std::endl;
+
+
+                        Buffer out_buff;
+
+                        char testBuff[10]; 
+
+                        testBuff[0] = 'A';
+                        testBuff[1] = 'B';
+                        testBuff[2] = 'c';
+                        testBuff[3] = 'd';
+                        testBuff[4] = 'E';
+                        testBuff[5] = 'F';
+                        testBuff[6] = 'G';
+                        testBuff[7] = 'H';
+                        testBuff[8] = 'Q';
+                        testBuff[9] = 'P';
+                        
+                        out_buff.write(testBuff, sizeof(testBuff));
+
+                        // std::vector<Resource> resources;
+
+                        // this->getResourcesByTarget(target, 5, resources, "primary");
+
+                        // for (int i = 0; i < resources.size(); i++) {
+
+                        //     strcpy(resources[i].target, this->m_name.c_str());
+
+                        // }
+
+                        // this->m_encoder.run(out_buff, resources);
+
+                        std::cout << "STREAM WRITE: " << target << " END" << std::endl;
+
+                        return out_buff;
+                    });
+
+                    m_ioGroup.beginRead(target, [this, target](Buffer& data) {
+
+                        std::cout << "STREAM READ: " << target << " BEGIN" << std::endl;
+
+                        // std::vector<Resource> resources;
+
+                        // this->m_decoder.run(data, resources);
+                        // this->putResources(resources, "primary");
+
+                        data.print(); 
+
+                        std::cout << "STREAM READ: " << target << " END" << std::endl;
+                    },
+                    []() {
+
+
+
+                    });
+
+                    m_ioGroup.activate();
+
+                }
+
             }
 
-            m_connections.insert({name, con});
-            m_activeConnections.push_back(name);
+            std::cout << "Client: " << ip << " has connected" << std::endl;
         }
     }
-}
-
-bool NetworkManager::dataReady(std::string nodeName) {
-
-    Connection con = m_connections.at(nodeName);
-	
-
-    u_long readableBytes = 0;
-	
-    ioctlsocket(con.socket, FIONREAD, &readableBytes);
-
-    if(readableBytes == 0) {
-
-         return false;
-    }
-
-    return true;
 }
 
 void NetworkManager::monitoringLoop() {
 
-    if(m_monitorConnected) {
-
-        Buffer out_buff;
-        std::vector<Resource> monitorResponses;
-
-        getResources(5, monitorResponses, "monitor");
-
-        m_encoder.run(out_buff, monitorResponses);
-
-        if(monitorResponses.size() > 0)
-            write("127.0.0.1", out_buff, false);
-
-        Buffer in_buff;
-        std::vector<Resource> monitorRequests;
-
-        
-		if (read("127.0.0.1", in_buff, false)) {
-
-			m_decoder.run(in_buff, monitorRequests);
-
-			putResources(monitorRequests, "monitor");
-		}
-    }
-
-    if(isRunning()) {
-
-        Sleep(100);
-        m_workQueue.addTask(Task(
-			"net_monitoring_thread",
-			std::bind(&NetworkManager::monitoringLoop, this)
-		));
-    }
 }
 
-std::vector<std::string>& NetworkManager::getActiveNodes() {
+std::vector<std::string> NetworkManager::getActiveNodes() {
 
-    return m_activeConnections;
+    std::vector<std::string> activeConnections;
+
+    for(auto itr = m_activeConnections.begin(); itr != m_activeConnections.end(); itr++) {
+
+        activeConnections.push_back(*itr);
+    }
+
+    return activeConnections;
 }
 
 void NetworkManager::execute() {
+    
+    for(auto itr = m_activeConnections.begin(); itr != m_activeConnections.end(); itr++) {
 
-        
-    bool readSomeData = false;
-    bool writeSomeData = false;
-
-	for(int i = 0; i < m_activeConnections.size(); i++) {
-
-		Buffer buff;
-		std::vector<Resource> resources;
-        
-
-        if(dataReady(m_activeConnections[i])) {
-            
-
-            if(read(m_activeConnections[i], buff)) {
-
-                m_decoder.run(buff, resources);
-                
-                for(int i = 0; i < resources.size(); i++) {
-
-                    std::cout << "NetManager: resource received over network: " << resources[i].type << std::endl;
-                }
-
-                putResources(resources, "primary");
-            
-            } else {
-
-                std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
-            }
-        }
-	}
-
-    std::vector<Resource> res;
-
-    getResources(5, res, "primary");
-
-    for(int i = 0; i < res.size(); i++) {
-
-        std::cout << "NetManager: writing resource over network: " << res[i].type << std::endl;
+        m_ioGroup.triggerWrite(*itr);
     }
 
-    std::vector<Buffer>      targeted;
-    std::vector<std::string> targets;
-
-
-    Buffer                generalBuff;
-    std::vector<Resource> general;
-
-    for(int i = 0; i < res.size(); i++) {
-
-        if(strcmp(res[i].target, "all") == 0) {
-
-            general.push_back(res[i]);
-
-        } else {
-
-            Buffer buff;
-
-            targeted.push_back(buff);
-
-            targets.push_back(res[i].target);
-            strcpy(res[i].target, m_name.c_str());
-
-            m_encoder.run(targeted.back(), res[i]);
-        }
-    }
-
-    m_encoder.run(generalBuff, general);
-
-    if(general.size() > 0) {
-        for(int i = 0; i < m_activeConnections.size(); i++) {
-
-            std::cout << "NetManager: sending multi-cast resources..." << std::endl;
-
-            if(!write(m_activeConnections[i], generalBuff)) {
-
-                std::cout << "NetManager: node " << m_activeConnections[i] << " communication failure... " << std::endl;
-            }
-
-            writeSomeData = true;
-            
-        }
-    }
-
-    for(int i = 0; i < targeted.size(); i++) {
-        
-        std::cout << "NetManager: sending targeted resource to " << targets[i] << std::endl;
-
-        m_stateReg.updateState("writing_too", targets[i]);
-
-        if(!write(targets[i], targeted[i])) {
-            
-            std::cout << "NetManager: node " << targets[i] << " communication failure... " << std::endl;
-
-            continue;
-        }
-    }
-
-    if(isRunning()) {
-
-		Sleep(200);
-        m_workQueue.addTask(Task(
-			m_worker,
-			std::bind(&NetworkManager::execute, this)
-		));
-
-    }
 }
