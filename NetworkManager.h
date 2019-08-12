@@ -31,7 +31,7 @@
 #include "StreamGroup.h"
 #include "TaskExecutor.h"
 
-const unsigned int MAX_BLOCK_SIZE = 512; 
+const unsigned int MAX_BLOCK_SIZE = 1023; 
 const unsigned int MAX_IO_THREADS = 4;
 
 class NetworkManager : public Manager<NetworkManager> {

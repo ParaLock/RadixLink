@@ -61,6 +61,7 @@ namespace NetIO {
 
                     m_isProcessing = true;
 
+
                 }
 
             }
@@ -154,14 +155,14 @@ namespace NetIO {
                         waitTime
                 );
 
-                std::cout << "Processing Stream: End: " << GetLastErrorAsString() << std::endl;
-
 				if (result && poverlapped != nullptr) {
 		     
                     Stream::OverlappedExtended* info = (Stream::OverlappedExtended*)poverlapped;
 
                     info->tr->parentStream->transactionCompleted(info->tr);
-				}
+				
+                    std::cout << "Processing Stream: End: " << GetLastErrorAsString() << std::endl;
+                }
        
                 if(m_isProcessing) {
 

@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <deque>
 
 
@@ -12,7 +14,6 @@ namespace ObjectPool {
     template<typename T>
     class Pool {
     private:
-    
         std::deque<unsigned int> m_freeList;
         std::vector<T>            m_pool;
 
@@ -23,15 +24,29 @@ namespace ObjectPool {
             for(int i = 0; i < numStartingElements; i++) {
 
                 m_pool.    push_back(T());
+
+                auto& item = m_pool.back();
+
+                item.pool_index = m_pool.size() - 1;
+                item.reset();
+
                 m_freeList.push_back(m_pool.size() - 1);
             }
         }
     
+        ~Pool() {
+
+        }
+
         T* getItem() {
 
             if(m_freeList.size() == 0) {
 
                 m_pool.    push_back(T());
+                
+                auto& item = m_pool.back();
+                item.reset();
+
                 m_freeList.push_back(m_pool.size() - 1);
             }
 

@@ -27,12 +27,14 @@ namespace NetIO {
 
             uint64_t     payloadSize;
             bool         lastPacket;
-        };
+
+        }__attribute__((packed));
 
         struct Body {
 
             char      data[MAX_BLOCK_SIZE];
-        };
+
+        }__attribute__((packed));
 
         struct Transaction;
 
@@ -40,7 +42,8 @@ namespace NetIO {
             
             OVERLAPPED   overlapped;
             Transaction* tr;
-        };
+
+        }__attribute__((packed));
 
         struct Transaction : ObjectPool::Pooled {
 
@@ -60,8 +63,13 @@ namespace NetIO {
             OverlappedExtended   overlapped;
 
             Transaction() {
-                
+
+                buff.clear();
+
                 SecureZeroMemory(&overlapped, sizeof(overlapped));
+                SecureZeroMemory(&payload, sizeof(payload));
+                SecureZeroMemory(&header, sizeof(header));
+                
 
                 overlapped.tr = this;
 
@@ -86,10 +94,32 @@ namespace NetIO {
 
                 overlapped.tr = this;
 
-                header.payloadSize = 0;
+                buffInfo[0].len = sizeof(header);
+                buffInfo[0].buf = (char*)&header;
+
+                //Setup payload
+                buffInfo[1].len = MAX_BLOCK_SIZE;
+                buffInfo[1].buf = (char*)&payload;
+            }
+
+            void clearTxData() {
+
+                std::cout << "CLEARING TX DATA" << std::endl;
+
+                SecureZeroMemory(&payload, sizeof(payload));
+                SecureZeroMemory(&header, sizeof(header));
+
+                buffInfo[0].len = sizeof(header);
+                buffInfo[0].buf = (char*)&header;
+
+                //Setup payload
+                buffInfo[1].len = MAX_BLOCK_SIZE;
+                buffInfo[1].buf = (char*)&payload;
             }
 
             void reset() {
+
+                std::cout << "RESETTING TRANSACTION" << std::endl;
 
                 buff.clear();
 
@@ -97,10 +127,9 @@ namespace NetIO {
                 SecureZeroMemory(&payload, sizeof(payload));
                 SecureZeroMemory(&header, sizeof(header));
 
-                                received = 0;
+                received = 0;
                 sent     = 0;
 
-                //Setup header
                 buffInfo[0].len = sizeof(header);
                 buffInfo[0].buf = (char*)&header;
 
@@ -127,7 +156,13 @@ namespace NetIO {
 
         void performRead(Transaction* tr) {
 
-            //Update payload info.
+
+            tr->buffInfo[0].len = sizeof(tr->header);
+            tr->buffInfo[0].buf = (char*)&tr->header;
+
+            tr->buffInfo[1].len = MAX_BLOCK_SIZE;
+            tr->buffInfo[1].buf = (char*)&tr->payload;
+
             PostQueuedCompletionStatus(
                                         m_port,
                                         sizeof(tr),
@@ -140,8 +175,11 @@ namespace NetIO {
 
         void performWrite(Transaction* tr) {
 
-            DWORD flags = 0;
-            DWORD timeout = 0;
+            tr->buffInfo[0].len = sizeof(tr->header);
+            tr->buffInfo[0].buf = (char*)&tr->header;
+
+            tr->buffInfo[1].len = MAX_BLOCK_SIZE;
+            tr->buffInfo[1].buf = (char*)&tr->payload;
 
             PostQueuedCompletionStatus(
                                         m_port,
@@ -179,8 +217,6 @@ namespace NetIO {
 
         void handleIOSubmit(Transaction* tr) {
 
-            std::cout << "Stream: handleIOSubmit Begin: mode:" << tr->mode << std::endl;
-
             DWORD timeout = 0;
             DWORD flags = 0;
 
@@ -188,15 +224,13 @@ namespace NetIO {
 
             if(tr->mode == IO_MODE::READ_SUBMIT) {
                 
-                std::cout << "Stream: handleIOSubmit: READ" << std::endl;
-
                 tr->mode = IO_MODE::READ;
-
+    
                 result = WSARecv(
                                 m_socket,
                                 tr->buffInfo,
                                 2,
-                                (LPDWORD)&tr->received,
+                                NULL,
                                 &flags,
                                 (OVERLAPPED*)&tr->overlapped,
                                 NULL
@@ -208,17 +242,22 @@ namespace NetIO {
 
             } else if(tr->mode == IO_MODE::WRITE_SUBMIT) {
 
-                std::cout << "Stream: handleIOSubmit: WRITE" << std::endl;
-
                 tr->mode = IO_MODE::WRITE;
 
-                std::cout << "Stream: Write Begin" << "Payload Size: " << tr->header.payloadSize << std::endl;
+                printf("%s\n", "Dumping write header and payload");
+
+                printf("%x%x\n\n", tr->header.payloadSize, tr->header.lastPacket);
+                
+                for(int i = 0; i < tr->header.payloadSize; i++) {
+
+                    printf("%x", tr->payload.data[i]);
+                }
 
                 result = WSASend(
                                 m_socket,
                                 tr->buffInfo,
                                 2,
-                                (LPDWORD)&tr->sent,
+                                NULL,
                                 0,
                                 (OVERLAPPED*)&tr->overlapped,
                                 NULL
@@ -227,7 +266,6 @@ namespace NetIO {
                 std::cout << "Steam: Sending Write: result: " << result << std::endl;
                 std::cout << "Stream: Write: result as string: " << GetLastErrorAsString() << std::endl;    
                 
-
             } else {
 
                 std::cout << "Stream: Unknown IO mode." << std::endl;
@@ -235,6 +273,69 @@ namespace NetIO {
 
 
         }
+
+        void transactionCompleted(Transaction* tr) {
+
+            if(tr->mode == IO_MODE::READ) {
+
+                tr->buff.write(tr->payload.data, tr->header.payloadSize); 
+
+                if(tr->header.lastPacket) {
+
+                    m_onReadComplete(tr->buff);
+
+                    m_transactionPool.freeItem(tr);
+                    
+                    triggerRead();
+
+                } else {
+                    
+                    tr->mode = IO_MODE::READ_SUBMIT;
+
+                    performRead(tr);
+                }
+
+            } else if(tr->mode == IO_MODE::WRITE) {
+
+                tr->clearTxData();
+
+                printf("%s\n", "HANDLING WRITE");
+                printf("%s%d\n", "COUNT", tr->buff.getSize());
+                
+                printf("%s%d\n", "OFFSET BEFORE READ", tr->buff.getCurrOffset());
+                
+                unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
+
+                tr->header.lastPacket   = (tr->buff.getCurrOffset() == tr->buff.getSize());
+                tr->header.payloadSize  = amountToSend;
+
+                printf("%s%d\n", "OFFSET AFTER READ", tr->buff.getCurrOffset());
+                printf("%s%d\n", "AMOUNT TO SEND", amountToSend);
+                
+                if( (tr->buff.getCurrOffset() == tr->buff.getSize()) && amountToSend == 0) {
+
+                    printf("%s\n", "HANDLING LAST PACKET");
+
+                    m_onWriteComplete();
+                
+                    m_transactionPool.freeItem(tr);
+
+                } else {
+
+                    printf("%s\n", "WRITING NEXT PACKET");
+
+                    tr->mode = IO_MODE::WRITE_SUBMIT;
+
+                    performWrite(tr);
+                }
+
+            } else {
+
+                handleIOSubmit(tr);
+            }
+        }
+
+
 
         void init(SOCKET socket, HANDLE completionPort) {
 
@@ -245,15 +346,8 @@ namespace NetIO {
 
                 std::cout << "Stream: Failed to attach completion port to socket. " << GetLastError() << std::endl;
             }
-
-           // triggerRead();
-            
         }
-
-
-
         
-
         void regWriteStartCallback(std::function<Buffer()> callback) {
 
             m_onWriteStart = callback;
@@ -278,110 +372,42 @@ namespace NetIO {
         void triggerRead() {
 
             Transaction* tr    = m_transactionPool.getItem();
-     
+            
             tr->init(this, IO_MODE::READ_SUBMIT);
             
-            tr->received = 0;
-
+            tr->clearTxData();
+      
             performRead(tr);
         }
 
         void triggerWrite() {
 
-            //Here we need to perform all inital write setup. 
-            // TriggerWrite will only be called on first write.
-
             Transaction* tr = m_transactionPool.getItem();
 
             tr->init(this, IO_MODE::WRITE_SUBMIT);
 
+            tr->clearTxData();
+      
             tr->overlapped.tr       = tr;
             tr->buff                = m_onWriteStart();
-            tr->sent                = 0;
 
-            //Prepare initial buffer.
+            printf("%s\n", "HANDLING WRITE");
+            printf("%s%d\n", "COUNT", tr->buff.getSize());
+            
+            printf("%s%d\n", "OFFSET BEFORE READ", tr->buff.getCurrOffset());
+
             unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
 
+            printf("%s%d\n", "OFFSET AFTER READ", tr->buff.getCurrOffset());
+            printf("%s%d\n", "AMOUNT TO SEND", amountToSend);
+            
             tr->header.lastPacket   = (tr->buff.getCurrOffset() == tr->buff.getSize());
             tr->header.payloadSize  = amountToSend;
 
+            printf("%s\n", "WRITING FIRST PACKET");
+            
             performWrite(tr);
         }
-
-        void transactionCompleted(Transaction* tr) {
-
-            std::cout << "Stream: transactionCompleted: Begin" << std::endl;
-
-            if(tr->mode == IO_MODE::READ) {
-
-                //If we are here, we just got notified that a read has completed on this transaction. 
-                // This means that we need to either prepare for another read or terminal the transaction if all packets for the transaction have been read.
-
-                std::cout << "Stream: transactionCompleted: Mode Read: " << std::endl;
-                std::cout << "Stream: transactionCompleted: Mode Read: Payload size: " << tr->header.payloadSize << std::endl;
-
-                tr->buff.write(tr->payload.data, tr->header.payloadSize); 
-
-                std::cout << "Stream: transactionCompleted: Finished buffer write" << std::endl;
-
-                if(tr->header.lastPacket) {
-
-                    std::cout << "Stream: transactionCompleted: Write Handling last packet" << std::endl;
-
-                    m_onReadComplete(tr->buff);
-                    
-                    m_transactionPool.freeItem(tr);
-
-                } else {
-
-                    std::cout << "Stream: transactionCompleted: Reading next packet" << std::endl;
-
-                    performRead(tr);
-                }
-
-            } else if(tr->mode == IO_MODE::WRITE) {
-
-                //We just got notified that a write has completed on this transaction. 
-                // This means we need to prepare the next write.
-
-                //This first step is to see if we even need to send more data for this transaction. 
-                //We can do this by checking whether buff in transaction is equal to amount sent.
-
-                std::cout << "Stream: transactionCompleted: Mode Write" << std::endl;
-
-                unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
-
-                tr->header.lastPacket   = (tr->buff.getCurrOffset() == tr->buff.getSize());
-                tr->header.payloadSize  = amountToSend;
-
-                if(tr->header.lastPacket) {
-
-                    std::cout << "Stream: transactionCompleted: Read Handling last packet" << std::endl;
-
-                    m_onWriteComplete();
-
-                    m_transactionPool.freeItem(tr);
-
-                } else {
-
-
-                    std::cout << "Stream: transactionCompleted: Writing next packet" << std::endl;
-
-                    performWrite(tr);
-                }
-
-            } else {
-
-
-                std::cout << "Stream: transactionCompleted: Handling io submit" << std::endl;
-
-                handleIOSubmit(tr);
-            }
-
-
-            std::cout << "Stream: transactionCompleted: End" << std::endl;
-        }
-
 
     };
 

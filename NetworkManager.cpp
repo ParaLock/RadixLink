@@ -29,6 +29,35 @@ bool NetworkManager::connectToNode(const char* target, const char* port) {
 	return true;
 }
 
+
+void initBuffer(Buffer& out_buff) {
+
+    // char testBuff[MAX_BLOCK_SIZE + 3]; 
+    
+    // for(int i = 0; i < MAX_BLOCK_SIZE + 3; i++) {
+
+    //     if(i < MAX_BLOCK_SIZE + 3)
+    //         testBuff[i] = 'A';
+    //     else
+    //         testBuff[i] = 'B';
+    // }
+
+    char testBuff[10]; 
+
+    testBuff[0] = 'A';
+    testBuff[1] = 'B';
+    testBuff[2] = 'c';
+    testBuff[3] = 'd';
+    testBuff[4] = 'E';
+    testBuff[5] = 'F';
+    testBuff[6] = 'G';
+    testBuff[7] = 'H';
+    testBuff[8] = 'Q';
+    testBuff[9] = 'P';
+    
+    out_buff.write(testBuff, sizeof(testBuff));
+}
+
 void NetworkManager::processConnection(std::string target, std::string port) {
 
 
@@ -95,20 +124,7 @@ void NetworkManager::processConnection(std::string target, std::string port) {
 
                         Buffer out_buff;
 
-                        char testBuff[10]; 
-
-                        testBuff[0] = 'A';
-                        testBuff[1] = 'B';
-                        testBuff[2] = 'c';
-                        testBuff[3] = 'd';
-                        testBuff[4] = 'E';
-                        testBuff[5] = 'F';
-                        testBuff[6] = 'G';
-                        testBuff[7] = 'H';
-                        testBuff[8] = 'Q';
-                        testBuff[9] = 'P';
-                        
-                        out_buff.write(testBuff, sizeof(testBuff));
+                        initBuffer(out_buff);
 
                         // std::vector<Resource> resources;
 
@@ -121,8 +137,6 @@ void NetworkManager::processConnection(std::string target, std::string port) {
                         // }
 
                         // this->m_encoder.run(out_buff, resources);
-
-                        std::cout << "STREAM WRITE: " << target << " END" << std::endl;
 
                         return out_buff;
                     });
@@ -146,7 +160,9 @@ void NetworkManager::processConnection(std::string target, std::string port) {
 
                     });
 
+
                     m_ioGroup.activate();
+
 
                 }
 
@@ -253,13 +269,13 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
 	
 	int iResult;
 	
-	// ZeroMemory(&hints, sizeof(hints));
-    // hints.ai_family = AF_INET;
-    // hints.ai_socktype = SOCK_STREAM;
-    // hints.ai_protocol = IPPROTO_TCP;
-    // hints.ai_flags = AI_PASSIVE;
+	ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
 
-    iResult = getaddrinfo(ip.c_str(), DEFAULT_PORT, NULL, &result);
+    iResult = getaddrinfo(ip.c_str(), DEFAULT_PORT, &hints, &result);
     if ( iResult != 0 ) {
         printf("getaddrinfo failed with error: %d\n", iResult);
         return 1;
@@ -300,7 +316,6 @@ bool NetworkManager::createServer(std::string ip, const char* port) {
 	return true;
 
 }
-
 
 	
 void NetworkManager::acceptConnection() {
@@ -362,20 +377,8 @@ void NetworkManager::acceptConnection() {
 
                         Buffer out_buff;
 
-                        char testBuff[10]; 
-
-                        testBuff[0] = 'A';
-                        testBuff[1] = 'B';
-                        testBuff[2] = 'c';
-                        testBuff[3] = 'd';
-                        testBuff[4] = 'E';
-                        testBuff[5] = 'F';
-                        testBuff[6] = 'G';
-                        testBuff[7] = 'H';
-                        testBuff[8] = 'Q';
-                        testBuff[9] = 'P';
                         
-                        out_buff.write(testBuff, sizeof(testBuff));
+                        initBuffer(out_buff);
 
                         // std::vector<Resource> resources;
 
@@ -390,7 +393,7 @@ void NetworkManager::acceptConnection() {
                         // this->m_encoder.run(out_buff, resources);
 
                         std::cout << "STREAM WRITE: " << target << " END" << std::endl;
-
+                        
                         return out_buff;
                     });
 
@@ -413,8 +416,8 @@ void NetworkManager::acceptConnection() {
 
                     });
 
-                    m_ioGroup.activate();
 
+                    m_ioGroup.activate();
                 }
 
             }
@@ -444,7 +447,7 @@ void NetworkManager::execute() {
     
     for(auto itr = m_activeConnections.begin(); itr != m_activeConnections.end(); itr++) {
 
-        m_ioGroup.triggerWrite(*itr);
+        //m_ioGroup.triggerWrite(*itr);
     }
 
 }

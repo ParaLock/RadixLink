@@ -13,6 +13,8 @@
 #include "JobManager.h"
 
 
+#define JOB_TYPE_DLL 0
+
 class NodeManager : public Manager<NodeManager> {
 private:
 
