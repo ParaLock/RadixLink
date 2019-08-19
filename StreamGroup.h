@@ -61,8 +61,7 @@ namespace NetIO {
 
                     m_isProcessing = true;
 
-
-                }
+                 }
 
             }
 
@@ -73,7 +72,10 @@ namespace NetIO {
                     m_streams.insert({name, Stream()});
 
                     auto& s = m_streams.at(name);
+
                     s.init(socket, m_port);
+
+                   // s.triggerRead();
 
                     return true;
                 }
@@ -105,42 +107,21 @@ namespace NetIO {
 
             }
 
-
-            void triggerRead(std::string name) {
-                
-                auto& stream = m_streams.at(name);
-                stream.triggerRead();
-            }
-
             void triggerWrite(std::string name) {
 
                 auto& stream = m_streams.at(name);
                 stream.triggerWrite();
             }
 
-			std::string GetLastErrorAsString()
-			{
-				//Get the error message, if any.
-				DWORD errorMessageID = ::WSAGetLastError();
-				if (errorMessageID == 0)
-					return std::string(); //No error message has been recorded
+            void triggerRead(std::string name) {
 
-				LPSTR messageBuffer = nullptr;
-				size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-					NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-
-				std::string message(messageBuffer, size);
-
-				//Free the buffer.
-				LocalFree(messageBuffer);
-
-				return message;
-			}
+                auto& stream = m_streams.at(name);
+                stream.triggerRead();
+            }
 
             void processStreams() {
 
                 DWORD                      numBytes;
-                std::cout << "Processing Stream: Begin: " << std::endl; 
  
                 unsigned long long key  = 0;
 				DWORD waitTime          = INFINITE;
@@ -156,12 +137,13 @@ namespace NetIO {
                 );
 
 				if (result && poverlapped != nullptr) {
-		     
+                    
                     Stream::OverlappedExtended* info = (Stream::OverlappedExtended*)poverlapped;
 
-                    info->tr->parentStream->transactionCompleted(info->tr);
-				
-                    std::cout << "Processing Stream: End: " << GetLastErrorAsString() << std::endl;
+                    info->tr->parentStream->transactionCompleted(info->tr, numBytes);
+                } else {
+
+                    printf("%s\n", "StreamGroup: IO Failed");
                 }
        
                 if(m_isProcessing) {

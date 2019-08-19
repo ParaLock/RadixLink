@@ -11,11 +11,52 @@
 
 #include "jobtypes/DllJob.h"
 
+#include "ObjectPool.h"
+
 #include <iostream>
 
 #define JOB_TYPE_DLL 0
 
+struct Test : ObjectPool::Pooled {
+
+    int a;
+    int b;
+
+    void reset() {
+
+        a = -2;
+        b = -2;
+    }
+
+};
+
 int main(int argc, char **argv) {
+
+
+
+    // ObjectPool::Pool<Test> pool(16);
+
+    // Test* t1 = pool.getItem();
+    // t1->a = 3;
+    // t1->b = 4;
+
+    // Test* t2 = pool.getItem();
+    // pool.freeItem(t2);
+
+    // t2 = pool.getItem();
+
+    // std::cout << "t2: " << t2->a << " " << t2->b << std::endl;
+
+    // Buffer testBuff;
+
+    // for(int i = 0; i < 2047; i++) {
+
+    //     char d[1];
+    //     d[0] = 'A';
+    //     testBuff.write(&d[0], 1);
+    // }
+
+    // char temp[9000];
 
     WSADATA wsaData;
 

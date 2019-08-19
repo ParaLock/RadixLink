@@ -31,7 +31,7 @@
 #include "StreamGroup.h"
 #include "TaskExecutor.h"
 
-const unsigned int MAX_BLOCK_SIZE = 1023; 
+const unsigned int MAX_BLOCK_SIZE = 1024; 
 const unsigned int MAX_IO_THREADS = 4;
 
 class NetworkManager : public Manager<NetworkManager> {
@@ -119,6 +119,7 @@ public:
 	bool disconnect(std::string nodeName);
 	
 	void processConnection(std::string target, std::string port);
+
 
 	void monitoringLoop();
 

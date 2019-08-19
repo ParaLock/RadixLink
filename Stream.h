@@ -5,12 +5,12 @@
 #include "RingBuffer.h"
 #include "Buffer.h"
 #include "ObjectPool.h"
-
+#include <atomic> 
 namespace NetIO {
 
     using namespace ObjectPool;
 
-    const unsigned int MAX_BLOCK_SIZE = 1023;
+    const unsigned int MAX_BLOCK_SIZE = 1024;
     const unsigned int MAX_INFLIGHT   = 4;
     
     class Stream {
@@ -26,7 +26,6 @@ namespace NetIO {
         struct Header {
 
             uint64_t     payloadSize;
-            bool         lastPacket;
 
         }__attribute__((packed));
 
@@ -48,19 +47,19 @@ namespace NetIO {
         struct Transaction : ObjectPool::Pooled {
 
             Stream* parentStream;
-
-            Header header;
             Body payload;
             
-            WSABUF       buffInfo[2];
+            WSABUF       buffInfo;
 
             IO_MODE      mode;
 
-            uint64_t received;
-            uint64_t sent;
+            uint64_t processedBytes;
+            bool     firstUpdate;
+
 
             Buffer               buff;
             OverlappedExtended   overlapped;
+
 
             Transaction() {
 
@@ -68,21 +67,16 @@ namespace NetIO {
 
                 SecureZeroMemory(&overlapped, sizeof(overlapped));
                 SecureZeroMemory(&payload, sizeof(payload));
-                SecureZeroMemory(&header, sizeof(header));
                 
-
                 overlapped.tr = this;
 
-                received = 0;
-                sent     = 0;
+                processedBytes = 0;
 
-                //Setup header
-                buffInfo[0].len = sizeof(header);
-                buffInfo[0].buf = (char*)&header;
+                firstUpdate = true;
 
                 //Setup payload
-                buffInfo[1].len = MAX_BLOCK_SIZE;
-                buffInfo[1].buf = (char*)&payload;
+                buffInfo.len = MAX_BLOCK_SIZE;
+                buffInfo.buf = (char*)&payload;
             }
 
             void init(Stream* stream, IO_MODE mode) {
@@ -92,14 +86,13 @@ namespace NetIO {
                 this->mode          = mode;
                 this->parentStream  = stream;
 
+                processedBytes = 0;
+
+                firstUpdate = true;
                 overlapped.tr = this;
 
-                buffInfo[0].len = sizeof(header);
-                buffInfo[0].buf = (char*)&header;
-
-                //Setup payload
-                buffInfo[1].len = MAX_BLOCK_SIZE;
-                buffInfo[1].buf = (char*)&payload;
+                buffInfo.len = MAX_BLOCK_SIZE;
+                buffInfo.buf = (char*)&payload;
             }
 
             void clearTxData() {
@@ -107,14 +100,9 @@ namespace NetIO {
                 std::cout << "CLEARING TX DATA" << std::endl;
 
                 SecureZeroMemory(&payload, sizeof(payload));
-                SecureZeroMemory(&header, sizeof(header));
 
-                buffInfo[0].len = sizeof(header);
-                buffInfo[0].buf = (char*)&header;
-
-                //Setup payload
-                buffInfo[1].len = MAX_BLOCK_SIZE;
-                buffInfo[1].buf = (char*)&payload;
+                buffInfo.len = MAX_BLOCK_SIZE;
+                buffInfo.buf = (char*)&payload;
             }
 
             void reset() {
@@ -125,17 +113,13 @@ namespace NetIO {
 
                 SecureZeroMemory(&overlapped, sizeof(overlapped));
                 SecureZeroMemory(&payload, sizeof(payload));
-                SecureZeroMemory(&header, sizeof(header));
 
-                received = 0;
-                sent     = 0;
+                processedBytes = 0;
+                firstUpdate = true;
 
-                buffInfo[0].len = sizeof(header);
-                buffInfo[0].buf = (char*)&header;
+                clearTxData();
 
-                //Setup payload
-                buffInfo[1].len = MAX_BLOCK_SIZE;
-                buffInfo[1].buf = (char*)&payload;
+                overlapped.tr   = this; 
             }
             
         };
@@ -144,8 +128,10 @@ namespace NetIO {
 
         ObjectPool::Pool<Transaction>       m_transactionPool;
 
-        HANDLE                   m_port;
-        SOCKET                   m_socket;
+        HANDLE                              m_port;
+        SOCKET                              m_socket;
+
+        Transaction*                        m_inputTr;
 
         std::function<void(Buffer& data)> m_onReadComplete;
         std::function<void()>             m_onReadStart;
@@ -153,15 +139,13 @@ namespace NetIO {
         std::function<void()>             m_onWriteComplete;
         std::function<Buffer()>           m_onWriteStart;          
 
+        std::deque<Transaction*>          m_pendingTransactions;
+        bool                              m_transactionInProgress;
 
         void performRead(Transaction* tr) {
 
-
-            tr->buffInfo[0].len = sizeof(tr->header);
-            tr->buffInfo[0].buf = (char*)&tr->header;
-
-            tr->buffInfo[1].len = MAX_BLOCK_SIZE;
-            tr->buffInfo[1].buf = (char*)&tr->payload;
+            tr->buffInfo.len = MAX_BLOCK_SIZE;
+            tr->buffInfo.buf = (char*)&tr->payload.data;
 
             PostQueuedCompletionStatus(
                                         m_port,
@@ -169,17 +153,10 @@ namespace NetIO {
                                         IO_MODE::READ,
                                         (OVERLAPPED*)&tr->overlapped
                                         );
-
-
+            
         }
 
         void performWrite(Transaction* tr) {
-
-            tr->buffInfo[0].len = sizeof(tr->header);
-            tr->buffInfo[0].buf = (char*)&tr->header;
-
-            tr->buffInfo[1].len = MAX_BLOCK_SIZE;
-            tr->buffInfo[1].buf = (char*)&tr->payload;
 
             PostQueuedCompletionStatus(
                                         m_port,
@@ -192,8 +169,12 @@ namespace NetIO {
 
     public:
 
-        Stream() : m_transactionPool(16) {
+        Stream() : m_transactionPool(16), m_transactionInProgress(false) {
+            
+            m_transactionInProgress = false;
 
+            m_inputTr = nullptr;
+ 
         }
 
         std::string GetLastErrorAsString()
@@ -215,118 +196,137 @@ namespace NetIO {
             return message;
         }
 
+        Header appendHeader(Transaction* tr) {
+
+            Header header;
+            header.payloadSize = tr->buff.getSize();
+
+            Buffer headerData;
+            headerData.write((char*)&header, sizeof(Header));
+
+            tr->buff.getVec().insert(
+                                        tr->buff.getVec().begin(), 
+                                        headerData.getVec().begin(), 
+                                        headerData.getVec().end()
+                                    );
+
+            return header;
+        }
+
         void handleIOSubmit(Transaction* tr) {
 
             DWORD timeout = 0;
             DWORD flags = 0;
-
+            
             int result = 0;
-
             if(tr->mode == IO_MODE::READ_SUBMIT) {
                 
                 tr->mode = IO_MODE::READ;
-    
+                
+                tr->buffInfo.len = MAX_BLOCK_SIZE;
+                tr->buffInfo.buf = (char*)&tr->payload;
+   
                 result = WSARecv(
                                 m_socket,
-                                tr->buffInfo,
-                                2,
+                                &tr->buffInfo,
+                                1,
                                 NULL,
                                 &flags,
                                 (OVERLAPPED*)&tr->overlapped,
                                 NULL
                             );
 
-                std::cout << "Steam: Read: result: " << result << std::endl;
-                std::cout << "Stream: Read: result as string: " << GetLastErrorAsString() << std::endl;    
-
 
             } else if(tr->mode == IO_MODE::WRITE_SUBMIT) {
 
                 tr->mode = IO_MODE::WRITE;
 
-                printf("%s\n", "Dumping write header and payload");
-
-                printf("%x%x\n\n", tr->header.payloadSize, tr->header.lastPacket);
-                
-                for(int i = 0; i < tr->header.payloadSize; i++) {
-
-                    printf("%x", tr->payload.data[i]);
-                }
-
                 result = WSASend(
-                                m_socket,
-                                tr->buffInfo,
-                                2,
-                                NULL,
-                                0,
-                                (OVERLAPPED*)&tr->overlapped,
-                                NULL
-                                );
+                            m_socket,
+                            &tr->buffInfo,
+                            1,
+                            NULL,
+                            0,
+                            (OVERLAPPED*)&tr->overlapped,
+                            NULL
+                            );  
+                    
+            }
+        }
 
-                std::cout << "Steam: Sending Write: result: " << result << std::endl;
-                std::cout << "Stream: Write: result as string: " << GetLastErrorAsString() << std::endl;    
-                
-            } else {
+        void updateReadTransactions(DWORD bytesRead) {
 
-                std::cout << "Stream: Unknown IO mode." << std::endl;
+            Buffer completedTr;
+
+            Buffer& inputStream = m_inputTr->buff;
+            char*   payload     = m_inputTr->payload.data;
+
+            m_inputTr->buff.write(payload, bytesRead);
+
+            if(m_inputTr->buff.getSize() > sizeof(Header) && m_inputTr->firstUpdate) {
+            
+                m_inputTr->firstUpdate = false;
+
+                Header header = *(Header*)m_inputTr->buff.getBase();
+
+                m_inputTr->processedBytes = header.payloadSize;
+
+                printf("%s%d\n", "!!!!!!!!!!!!!!!!Payload Size!!!!!!!!!!!!!!!!!!!!!: ", m_inputTr->processedBytes);
             }
 
+            if(m_inputTr->buff.getSize() < m_inputTr->processedBytes) {
+                
+                m_inputTr->mode = IO_MODE::READ_SUBMIT;
+                
+                performRead(m_inputTr);
+
+            } else {
+
+              completedTr.write(m_inputTr->buff.getBase() + sizeof(Header), m_inputTr->processedBytes);
+                
+                m_inputTr->buff.getVec().erase(m_inputTr->buff.getVec().begin(), 
+                                            m_inputTr->buff.getVec().begin()+m_inputTr->processedBytes + sizeof(Header));
+
+                printf("%s%d\n", "Completed Transaction: ", m_inputTr->processedBytes);
+
+                m_onReadComplete(completedTr);
+
+                m_inputTr->processedBytes = 0;
+                m_inputTr->firstUpdate    = true;
+
+                m_inputTr->mode = IO_MODE::READ_SUBMIT;
+                
+                performRead(m_inputTr);
+            }
 
         }
 
-        void transactionCompleted(Transaction* tr) {
+        void transactionCompleted(Transaction* tr, DWORD numBytes) {
 
             if(tr->mode == IO_MODE::READ) {
-
-                tr->buff.write(tr->payload.data, tr->header.payloadSize); 
-
-                if(tr->header.lastPacket) {
-
-                    m_onReadComplete(tr->buff);
-
-                    m_transactionPool.freeItem(tr);
-                    
-                    triggerRead();
-
-                } else {
-                    
-                    tr->mode = IO_MODE::READ_SUBMIT;
-
-                    performRead(tr);
-                }
+                
+                tr->parentStream->updateReadTransactions(numBytes);
 
             } else if(tr->mode == IO_MODE::WRITE) {
-
-                tr->clearTxData();
-
-                printf("%s\n", "HANDLING WRITE");
-                printf("%s%d\n", "COUNT", tr->buff.getSize());
                 
-                printf("%s%d\n", "OFFSET BEFORE READ", tr->buff.getCurrOffset());
-                
+                tr->firstUpdate = false;
+
                 unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
-
-                tr->header.lastPacket   = (tr->buff.getCurrOffset() == tr->buff.getSize());
-                tr->header.payloadSize  = amountToSend;
-
-                printf("%s%d\n", "OFFSET AFTER READ", tr->buff.getCurrOffset());
-                printf("%s%d\n", "AMOUNT TO SEND", amountToSend);
                 
-                if( (tr->buff.getCurrOffset() == tr->buff.getSize()) && amountToSend == 0) {
-
-                    printf("%s\n", "HANDLING LAST PACKET");
+                if(amountToSend == 0) {
 
                     m_onWriteComplete();
-                
-                    m_transactionPool.freeItem(tr);
 
+                    m_transactionPool.freeItem(tr);
+                
                 } else {
 
-                    printf("%s\n", "WRITING NEXT PACKET");
-
+                    tr->buffInfo.len = amountToSend;
+                    tr->buffInfo.buf = (char*)&tr->payload;
+                
                     tr->mode = IO_MODE::WRITE_SUBMIT;
 
-                    performWrite(tr);
+                    performRead(tr);
                 }
 
             } else {
@@ -348,6 +348,18 @@ namespace NetIO {
             }
         }
         
+        void triggerRead() {
+
+            if(m_inputTr == nullptr) {
+
+                m_inputTr = m_transactionPool.getItem();
+                m_inputTr->init(this, IO_MODE::READ_SUBMIT);
+
+            }
+
+            performRead(m_inputTr);
+        }
+
         void regWriteStartCallback(std::function<Buffer()> callback) {
 
             m_onWriteStart = callback;
@@ -369,17 +381,6 @@ namespace NetIO {
             m_onWriteComplete = callback;
         }
 
-        void triggerRead() {
-
-            Transaction* tr    = m_transactionPool.getItem();
-            
-            tr->init(this, IO_MODE::READ_SUBMIT);
-            
-            tr->clearTxData();
-      
-            performRead(tr);
-        }
-
         void triggerWrite() {
 
             Transaction* tr = m_transactionPool.getItem();
@@ -387,26 +388,24 @@ namespace NetIO {
             tr->init(this, IO_MODE::WRITE_SUBMIT);
 
             tr->clearTxData();
-      
             tr->overlapped.tr       = tr;
             tr->buff                = m_onWriteStart();
 
-            printf("%s\n", "HANDLING WRITE");
-            printf("%s%d\n", "COUNT", tr->buff.getSize());
-            
-            printf("%s%d\n", "OFFSET BEFORE READ", tr->buff.getCurrOffset());
+            appendHeader(tr);
 
-            unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
-
-            printf("%s%d\n", "OFFSET AFTER READ", tr->buff.getCurrOffset());
-            printf("%s%d\n", "AMOUNT TO SEND", amountToSend);
-            
-            tr->header.lastPacket   = (tr->buff.getCurrOffset() == tr->buff.getSize());
-            tr->header.payloadSize  = amountToSend;
-
-            printf("%s\n", "WRITING FIRST PACKET");
-            
             performWrite(tr);
+
+            // initFirstWrite(tr);
+            // Header header = appendHeader(tr);
+
+            // if(!m_transactionInProgress) {
+                            
+            //     firstWrite(tr);
+
+            // } else {
+
+            //     m_pendingTransactions.push_back(tr);
+            // }
         }
 
     };

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <deque>
+#include <mutex>
 
 
 namespace ObjectPool {
@@ -21,6 +22,7 @@ namespace ObjectPool {
 
         Pool(unsigned int numStartingElements) {
 
+
             for(int i = 0; i < numStartingElements; i++) {
 
                 m_pool.    push_back(T());
@@ -36,6 +38,7 @@ namespace ObjectPool {
     
         ~Pool() {
 
+            //delete m_lock;
         }
 
         T* getItem() {
@@ -64,7 +67,6 @@ namespace ObjectPool {
 
             item->reset();
             m_freeList.push_back(item->pool_index);
-
         }
     };
 }

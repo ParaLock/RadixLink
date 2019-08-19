@@ -111,6 +111,11 @@ struct Buffer {
 	
 		return &data[0] + data.size();
 	}
+
+	std::vector<char>& getVec() {
+
+		return data;
+	}
 	
 	void print() {
 

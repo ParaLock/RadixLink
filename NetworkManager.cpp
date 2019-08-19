@@ -32,28 +32,28 @@ bool NetworkManager::connectToNode(const char* target, const char* port) {
 
 void initBuffer(Buffer& out_buff) {
 
-    // char testBuff[MAX_BLOCK_SIZE + 3]; 
+    char testBuff[15]; 
     
-    // for(int i = 0; i < MAX_BLOCK_SIZE + 3; i++) {
+    for(int i = 0; i < 15; i++) {
 
-    //     if(i < MAX_BLOCK_SIZE + 3)
-    //         testBuff[i] = 'A';
-    //     else
-    //         testBuff[i] = 'B';
-    // }
+        if(i < 15)
+            testBuff[i] = 'A';
+        else
+            testBuff[i] = 'B';
+    }
 
-    char testBuff[10]; 
+    // char testBuff[10]; 
 
-    testBuff[0] = 'A';
-    testBuff[1] = 'B';
-    testBuff[2] = 'c';
-    testBuff[3] = 'd';
-    testBuff[4] = 'E';
-    testBuff[5] = 'F';
-    testBuff[6] = 'G';
-    testBuff[7] = 'H';
-    testBuff[8] = 'Q';
-    testBuff[9] = 'P';
+    // testBuff[0] = 'A';
+    // testBuff[1] = 'B';
+    // testBuff[2] = 'c';
+    // testBuff[3] = 'd';
+    // testBuff[4] = 'E';
+    // testBuff[5] = 'F';
+    // testBuff[6] = 'G';
+    // testBuff[7] = 'H';
+    // testBuff[8] = 'Q';
+    // testBuff[9] = 'P';
     
     out_buff.write(testBuff, sizeof(testBuff));
 }
@@ -124,35 +124,34 @@ void NetworkManager::processConnection(std::string target, std::string port) {
 
                         Buffer out_buff;
 
-                        initBuffer(out_buff);
+                        //initBuffer(out_buff);
 
-                        // std::vector<Resource> resources;
+                        std::vector<Resource> resources;
 
-                        // this->getResourcesByTarget(target, 5, resources, "primary");
+                        this->getResourcesByTarget(target, 5, resources, "primary");
 
-                        // for (int i = 0; i < resources.size(); i++) {
+                        for (int i = 0; i < resources.size(); i++) {
 
-                        //     strcpy(resources[i].target, this->m_name.c_str());
+                            strcpy(resources[i].target, this->m_name.c_str());
 
-                        // }
+                        }
 
-                        // this->m_encoder.run(out_buff, resources);
+                        this->m_encoder.run(out_buff, resources);
 
                         return out_buff;
                     });
 
                     m_ioGroup.beginRead(target, [this, target](Buffer& data) {
 
-                        std::cout << "STREAM READ: " << target << " BEGIN" << std::endl;
+                        //std::cout << "STREAM READ: " << target << " BEGIN" << std::endl;
 
-                        // std::vector<Resource> resources;
+                        std::vector<Resource> resources;
 
-                        // this->m_decoder.run(data, resources);
-                        // this->putResources(resources, "primary");
+                        this->m_decoder.run(data, resources);
+                        this->putResources(resources, "primary");
 
-                        data.print(); 
-
-                        std::cout << "STREAM READ: " << target << " END" << std::endl;
+                        //data.print(); 
+                       // std::cout << "STREAM READ: " << target << " END" << std::endl;
                     },
                     []() {
 
@@ -211,7 +210,8 @@ void NetworkManager::testRead() {
 
     // std::cout << "TEST Write End: Result: " << result << "Status: " << WSAGetLastError() << std::endl;
 
-    m_ioGroup.triggerRead(testSocket);
+
+ m_ioGroup.triggerRead(testSocket);
 
     std::cout << "Running  read test! __END" << std::endl;
 }
@@ -237,7 +237,11 @@ void NetworkManager::testWrite() {
 
     // std::cout << "TEST Write End: Result: " << result << "Status: " << WSAGetLastError() << std::endl;
 
-    m_ioGroup.triggerWrite(testSocket);
+    for(int i = 0; i < 2; i++) {
+
+        m_ioGroup.triggerWrite(testSocket);
+
+    }
 
     std::cout << "Running write test! __END" << std::endl;
 }
@@ -372,43 +376,43 @@ void NetworkManager::acceptConnection() {
                     },
                         [this, target]() {
                         
-                        std::cout << "STREAM WRITE: " << target << " BEGIN" << std::endl;
+                       // std::cout << "STREAM WRITE: " << target << " BEGIN" << std::endl;
 
 
                         Buffer out_buff;
 
                         
-                        initBuffer(out_buff);
+                       // initBuffer(out_buff);
 
-                        // std::vector<Resource> resources;
+                        std::vector<Resource> resources;
 
-                        // this->getResourcesByTarget(target, 5, resources, "primary");
+                        this->getResourcesByTarget(target, 5, resources, "primary");
 
-                        // for (int i = 0; i < resources.size(); i++) {
+                        for (int i = 0; i < resources.size(); i++) {
 
-                        //     strcpy(resources[i].target, this->m_name.c_str());
+                            strcpy(resources[i].target, this->m_name.c_str());
 
-                        // }
+                        }
 
-                        // this->m_encoder.run(out_buff, resources);
+                        this->m_encoder.run(out_buff, resources);
 
-                        std::cout << "STREAM WRITE: " << target << " END" << std::endl;
+                        //std::cout << "STREAM WRITE: " << target << " END" << std::endl;
                         
                         return out_buff;
                     });
 
                     m_ioGroup.beginRead(target, [this, target](Buffer& data) {
 
-                        std::cout << "STREAM READ: " << target << " BEGIN" << std::endl;
+                        //std::cout << "STREAM READ: " << target << " BEGIN" << std::endl;
 
-                        // std::vector<Resource> resources;
+                        std::vector<Resource> resources;
+                        
 
-                        // this->m_decoder.run(data, resources);
-                        // this->putResources(resources, "primary");
+                        //data.print(); 
+                        this->m_decoder.run(data, resources);
+                        this->putResources(resources, "primary");
 
-                        data.print(); 
-
-                        std::cout << "STREAM READ: " << target << " END" << std::endl;
+                        //std::cout << "STREAM READ: " << target << " END" << std::endl;
                     },
                     []() {
 
@@ -447,7 +451,7 @@ void NetworkManager::execute() {
     
     for(auto itr = m_activeConnections.begin(); itr != m_activeConnections.end(); itr++) {
 
-        //m_ioGroup.triggerWrite(*itr);
+        m_ioGroup.triggerWrite(*itr);
     }
 
 }

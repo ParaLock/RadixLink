@@ -79,6 +79,14 @@ public:
 
         for (auto it = m_currentIncomingJobs.begin(); it != m_currentIncomingJobs.end(); it++ ) {
             
+            std::cout << "JobManager: Status: IsRunnable: " << it->second->isRunnable() << std::endl;
+            std::cout << "JobManager: Status: IsComplete: " << it->second->isComplete() << std::endl;
+
+            std::cout << "JobManager: Status: _hasCode: " << it->second->_hasCode << std::endl;
+            std::cout << "JobManager: Status: _hasData: " << it->second->_hasData << std::endl;
+            std::cout << "JobManager: Status: _hasJob: " << it->second->_hasJob << std::endl;
+            std::cout << "JobManager: Status: _hasResult: " << it->second->_hasResult << std::endl;
+
             if(it->second->isRunnable() && !it->second->isComplete()) {
 
                 it->second->execute();
