@@ -216,6 +216,9 @@ int main(int argc, char **argv) {
         buff.write((char*)&resource.order, sizeof(resource.order));
         buff.write(resource.buff.getBase(), resource.buff.getSize());
 
+
+        resource.destManager = "job_manager";
+
     });
 
     encoder.registerHandler(RESOURCE_TYPE_STATUS, [](Buffer& buff, Resource& resource) {

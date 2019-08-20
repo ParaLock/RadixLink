@@ -118,7 +118,10 @@ namespace NetIO {
                 firstUpdate = true;
 
                 clearTxData();
-
+                
+                buffInfo.len = MAX_BLOCK_SIZE;
+                buffInfo.buf = (char*)&payload;
+                
                 overlapped.tr   = this; 
             }
             
@@ -175,25 +178,6 @@ namespace NetIO {
 
             m_inputTr = nullptr;
  
-        }
-
-        std::string GetLastErrorAsString()
-		{
-            //Get the error message, if any.
-            DWORD errorMessageID = ::WSAGetLastError();
-            if (errorMessageID == 0)
-                return std::string(); //No error message has been recorded
-
-            LPSTR messageBuffer = nullptr;
-            size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-
-            std::string message(messageBuffer, size);
-
-            //Free the buffer.
-            LocalFree(messageBuffer);
-
-            return message;
         }
 
         Header appendHeader(Transaction* tr) {
@@ -309,8 +293,6 @@ namespace NetIO {
 
             } else if(tr->mode == IO_MODE::WRITE) {
                 
-                tr->firstUpdate = false;
-
                 unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
                 
                 if(amountToSend == 0) {
@@ -326,7 +308,7 @@ namespace NetIO {
                 
                     tr->mode = IO_MODE::WRITE_SUBMIT;
 
-                    performRead(tr);
+                    performWrite(tr);
                 }
 
             } else {
@@ -356,6 +338,9 @@ namespace NetIO {
                 m_inputTr->init(this, IO_MODE::READ_SUBMIT);
 
             }
+
+            m_inputTr->init(this, IO_MODE::READ_SUBMIT);
+            m_inputTr->clearTxData();
 
             performRead(m_inputTr);
         }
@@ -388,24 +373,29 @@ namespace NetIO {
             tr->init(this, IO_MODE::WRITE_SUBMIT);
 
             tr->clearTxData();
+
             tr->overlapped.tr       = tr;
             tr->buff                = m_onWriteStart();
 
             appendHeader(tr);
 
-            performWrite(tr);
+            unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
+                
+            if(amountToSend == 0) {
 
-            // initFirstWrite(tr);
-            // Header header = appendHeader(tr);
+                m_onWriteComplete();
 
-            // if(!m_transactionInProgress) {
-                            
-            //     firstWrite(tr);
+                m_transactionPool.freeItem(tr);
+            
+            } else {
 
-            // } else {
+                tr->buffInfo.len = amountToSend;
+                tr->buffInfo.buf = (char*)&tr->payload;
+            
+                tr->mode = IO_MODE::WRITE_SUBMIT;
 
-            //     m_pendingTransactions.push_back(tr);
-            // }
+                performWrite(tr);
+            }
         }
 
     };
