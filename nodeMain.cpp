@@ -204,12 +204,21 @@ int main(int argc, char **argv) {
 
 
         std::cout << "Encoder: Result section detected!" << " payload size: " << resource.buff.getSize() + sizeof(resource.target) + sizeof(resource.order) << std::endl;
+        char test[5];
+        test[0] = 'T';
+        test[1] = 'E';
+        test[2] = 'S';
+        test[3] = 'T';
+        test[4] = '7';
+
+        resource.buff.write(test, sizeof(test));
 
         EncoderHeader header;
         header.type         = resource.type;
         header.payloadSize  = resource.buff.getSize() + sizeof(resource.target) + sizeof(resource.order);
         header.jobID        = resource.jobID;
         header.jobType     = resource.jobType;
+
 
         buff.write((char*)&header, sizeof(EncoderHeader));
         buff.write((char*)&resource.target, sizeof(resource.target));

@@ -24,8 +24,38 @@ namespace NetIO {
         };
 
         struct Header {
-
+            char preamble[12];
             uint64_t     payloadSize;
+            char postamble[12];
+            
+            Header() {
+
+                preamble[0] = '@';
+                preamble[1] = '@';
+                preamble[2] = '@';
+                preamble[3] = 'H';
+                preamble[4] = 'E';
+                preamble[5] = 'A';
+                preamble[6] = 'D';
+                preamble[7] = 'E';
+                preamble[8] = 'R';
+                preamble[9] = '@';
+                preamble[10] = '@';
+                preamble[11] = '@';
+
+                postamble[0] = '@';
+                postamble[1] = '@';
+                postamble[2] = '@';
+                postamble[3] = 'H';
+                postamble[4] = 'E';
+                postamble[5] = 'A';
+                postamble[6] = 'D';
+                postamble[7] = 'E';
+                postamble[8] = 'R';
+                postamble[9] = '@';
+                postamble[10] = '@';
+                postamble[11] = '@';
+            }
 
         }__attribute__((packed));
 
@@ -73,16 +103,14 @@ namespace NetIO {
                 processedBytes = 0;
 
                 firstUpdate = true;
-
-                //Setup payload
-                buffInfo.len = MAX_BLOCK_SIZE;
-                buffInfo.buf = (char*)&payload;
             }
 
             void init(Stream* stream, IO_MODE mode) {
 
                 std::cout << "Transaction: Init: mode: " << mode << std::endl;
-
+                
+                SecureZeroMemory(&payload, sizeof(payload));
+                
                 this->mode          = mode;
                 this->parentStream  = stream;
 
@@ -90,9 +118,6 @@ namespace NetIO {
 
                 firstUpdate = true;
                 overlapped.tr = this;
-
-                buffInfo.len = MAX_BLOCK_SIZE;
-                buffInfo.buf = (char*)&payload;
             }
 
             void clearTxData() {
@@ -100,9 +125,6 @@ namespace NetIO {
                 std::cout << "CLEARING TX DATA" << std::endl;
 
                 SecureZeroMemory(&payload, sizeof(payload));
-
-                buffInfo.len = MAX_BLOCK_SIZE;
-                buffInfo.buf = (char*)&payload;
             }
 
             void reset() {
@@ -120,7 +142,7 @@ namespace NetIO {
                 clearTxData();
                 
                 buffInfo.len = MAX_BLOCK_SIZE;
-                buffInfo.buf = (char*)&payload;
+                buffInfo.buf = payload.data;
                 
                 overlapped.tr   = this; 
             }
@@ -140,15 +162,19 @@ namespace NetIO {
         std::function<void()>             m_onReadStart;
 
         std::function<void()>             m_onWriteComplete;
-        std::function<Buffer()>           m_onWriteStart;          
+        std::function<Buffer()>           m_onWriteStart; 
 
-        std::deque<Transaction*>          m_pendingTransactions;
-        bool                              m_transactionInProgress;
+        bool                             m_transactionInProgress;  
+        std::deque<Transaction*>        m_pendingTransactions;       
+        std::mutex*                     m_readLock;       
+        std::mutex*                     m_writeLock;
 
-        void performRead(Transaction* tr) {
+        void submitRead(Transaction* tr) {
 
             tr->buffInfo.len = MAX_BLOCK_SIZE;
-            tr->buffInfo.buf = (char*)&tr->payload.data;
+            tr->buffInfo.buf = tr->payload.data;
+
+            tr->mode = IO_MODE::READ_SUBMIT;
 
             PostQueuedCompletionStatus(
                                         m_port,
@@ -159,7 +185,9 @@ namespace NetIO {
             
         }
 
-        void performWrite(Transaction* tr) {
+        void submitWrite(Transaction* tr) {
+
+            tr->mode = IO_MODE::WRITE_SUBMIT;
 
             PostQueuedCompletionStatus(
                                         m_port,
@@ -172,12 +200,12 @@ namespace NetIO {
 
     public:
 
-        Stream() : m_transactionPool(16), m_transactionInProgress(false) {
+        Stream() : m_transactionPool(16) {
             
+            m_inputTr         = nullptr;
             m_transactionInProgress = false;
-
-            m_inputTr = nullptr;
- 
+            m_readLock = new std::mutex;
+             m_writeLock = new std::mutex;
         }
 
         Header appendHeader(Transaction* tr) {
@@ -203,12 +231,13 @@ namespace NetIO {
             DWORD flags = 0;
             
             int result = 0;
+
             if(tr->mode == IO_MODE::READ_SUBMIT) {
                 
-                tr->mode = IO_MODE::READ;
-                
                 tr->buffInfo.len = MAX_BLOCK_SIZE;
-                tr->buffInfo.buf = (char*)&tr->payload;
+                tr->buffInfo.buf = tr->payload.data;
+
+                tr->mode = IO_MODE::READ;
    
                 result = WSARecv(
                                 m_socket,
@@ -260,16 +289,16 @@ namespace NetIO {
 
             if(m_inputTr->buff.getSize() < m_inputTr->processedBytes) {
                 
-                m_inputTr->mode = IO_MODE::READ_SUBMIT;
-                
-                performRead(m_inputTr);
+               submitRead(m_inputTr);
 
             } else {
 
-              completedTr.write(m_inputTr->buff.getBase() + sizeof(Header), m_inputTr->processedBytes);
+                completedTr.write(      m_inputTr->buff.getBase() + sizeof(Header), 
+                                        m_inputTr->processedBytes
+                                );
                 
-                m_inputTr->buff.getVec().erase(m_inputTr->buff.getVec().begin(), 
-                                            m_inputTr->buff.getVec().begin()+m_inputTr->processedBytes + sizeof(Header));
+                m_inputTr->buff.getVec().erase( m_inputTr->buff.getVec().begin(), 
+                                                m_inputTr->buff.getVec().begin() + m_inputTr->processedBytes + sizeof(Header));
 
                 printf("%s%d\n", "Completed Transaction: ", m_inputTr->processedBytes);
 
@@ -277,12 +306,29 @@ namespace NetIO {
 
                 m_inputTr->processedBytes = 0;
                 m_inputTr->firstUpdate    = true;
-
-                m_inputTr->mode = IO_MODE::READ_SUBMIT;
                 
-                performRead(m_inputTr);
+                triggerRead();
             }
+        }
 
+        void writeNext(Transaction* tr, std::function<void()> onLastPacket) {
+
+            unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
+                
+            if(amountToSend == 0) {
+
+                m_onWriteComplete();
+                m_transactionPool.freeItem(tr);
+
+                onLastPacket();
+            
+            } else {
+
+                tr->buffInfo.len = amountToSend;
+                tr->buffInfo.buf = tr->payload.data;
+
+                submitWrite(tr);
+            }
         }
 
         void transactionCompleted(Transaction* tr, DWORD numBytes) {
@@ -292,32 +338,19 @@ namespace NetIO {
                 tr->parentStream->updateReadTransactions(numBytes);
 
             } else if(tr->mode == IO_MODE::WRITE) {
+              
+                writeNext(tr, [this]() { 
                 
-                unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
-                
-                if(amountToSend == 0) {
+                    this->m_transactionInProgress = true;
 
-                    m_onWriteComplete();
-
-                    m_transactionPool.freeItem(tr);
-                
-                } else {
-
-                    tr->buffInfo.len = amountToSend;
-                    tr->buffInfo.buf = (char*)&tr->payload;
-                
-                    tr->mode = IO_MODE::WRITE_SUBMIT;
-
-                    performWrite(tr);
-                }
+                    startNextPendingWrite();
+                });
 
             } else {
 
                 handleIOSubmit(tr);
             }
         }
-
-
 
         void init(SOCKET socket, HANDLE completionPort) {
 
@@ -335,14 +368,11 @@ namespace NetIO {
             if(m_inputTr == nullptr) {
 
                 m_inputTr = m_transactionPool.getItem();
-                m_inputTr->init(this, IO_MODE::READ_SUBMIT);
-
             }
 
             m_inputTr->init(this, IO_MODE::READ_SUBMIT);
-            m_inputTr->clearTxData();
 
-            performRead(m_inputTr);
+            submitRead(m_inputTr);
         }
 
         void regWriteStartCallback(std::function<Buffer()> callback) {
@@ -366,35 +396,70 @@ namespace NetIO {
             m_onWriteComplete = callback;
         }
 
-        void triggerWrite() {
-
-            Transaction* tr = m_transactionPool.getItem();
+        void initWrite(Transaction* tr) {
 
             tr->init(this, IO_MODE::WRITE_SUBMIT);
 
-            tr->clearTxData();
-
             tr->overlapped.tr       = tr;
             tr->buff                = m_onWriteStart();
-
-            appendHeader(tr);
-
-            unsigned int amountToSend = tr->buff.readSeq(tr->payload.data, MAX_BLOCK_SIZE);
-                
-            if(amountToSend == 0) {
-
-                m_onWriteComplete();
-
-                m_transactionPool.freeItem(tr);
             
+            appendHeader(tr);
+        }
+
+        void startNextPendingWrite() {
+
+            Transaction* tr = nullptr;
+            
+            if(m_pendingTransactions.size() > 0) {
+
+            
+                tr = m_pendingTransactions.back();
+                m_pendingTransactions.pop_back();
+            }
+
+            if(tr != nullptr) {
+
+                m_transactionInProgress = true;
+                writeNext(tr, [this]() {
+
+                    this->m_transactionInProgress = true;
+
+                    startNextPendingWrite();
+
+                });
+
             } else {
 
-                tr->buffInfo.len = amountToSend;
-                tr->buffInfo.buf = (char*)&tr->payload;
-            
-                tr->mode = IO_MODE::WRITE_SUBMIT;
+                m_transactionInProgress = false;
+            }
+        }
 
-                performWrite(tr);
+        void triggerWrite() {
+
+            printf("%s\n", "Triggering Write!");
+
+            Transaction* tr = nullptr;
+
+            if(!m_transactionInProgress) {
+
+                printf("%s\n", "Not Queueing write request");
+                tr = m_transactionPool.getItem();
+
+                initWrite(tr);
+
+                m_pendingTransactions.push_back(tr);
+
+                startNextPendingWrite();
+
+            } else {
+
+                tr = m_transactionPool.getItem();
+
+                initWrite(tr);
+
+                printf("%s\n", "Queuing write request");
+                m_pendingTransactions.push_back(tr);
+
             }
         }
 

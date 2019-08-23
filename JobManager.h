@@ -214,6 +214,25 @@ public:
 
             Encoder::run(codeFn, code_resource.buff);
 
+            // char test[MAX_BLOCK_SIZE * 7];
+
+            // for(int i = 0; i < MAX_BLOCK_SIZE * 7; i++) {
+
+            //     if(i < MAX_BLOCK_SIZE * 4) {
+            //         test[i] = 'A';
+            //     } else {
+            //         test[i] = 'B';
+            //     }
+            // }
+
+            // // test[0] = 'A';
+            // // test[1] = 'B';
+            // // test[2] = 'C';
+            // // test[3] = 'D';
+            // // test[4] = 'E';
+
+            //code_resource.buff.write(test, sizeof(test));
+
             code_resource.type          = RESOURCE_TYPE_CODE;
             code_resource.jobID         = jobID;
             code_resource.jobType       = jobType;
