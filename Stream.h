@@ -204,8 +204,6 @@ namespace NetIO {
             
             m_inputTr         = nullptr;
             m_transactionInProgress = false;
-            m_readLock = new std::mutex;
-             m_writeLock = new std::mutex;
         }
 
         Header appendHeader(Transaction* tr) {
