@@ -24,39 +24,8 @@ namespace NetIO {
         };
 
         struct Header {
-            char preamble[12];
             uint64_t     payloadSize;
-            char postamble[12];
-            
-            Header() {
-
-                preamble[0] = '@';
-                preamble[1] = '@';
-                preamble[2] = '@';
-                preamble[3] = 'H';
-                preamble[4] = 'E';
-                preamble[5] = 'A';
-                preamble[6] = 'D';
-                preamble[7] = 'E';
-                preamble[8] = 'R';
-                preamble[9] = '@';
-                preamble[10] = '@';
-                preamble[11] = '@';
-
-                postamble[0] = '@';
-                postamble[1] = '@';
-                postamble[2] = '@';
-                postamble[3] = 'H';
-                postamble[4] = 'E';
-                postamble[5] = 'A';
-                postamble[6] = 'D';
-                postamble[7] = 'E';
-                postamble[8] = 'R';
-                postamble[9] = '@';
-                postamble[10] = '@';
-                postamble[11] = '@';
-            }
-
+    
         }__attribute__((packed));
 
         struct Body {
